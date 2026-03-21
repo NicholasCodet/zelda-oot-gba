@@ -2,7 +2,7 @@
 
 # Next Action
 
-Add input handling and move a simple on-screen rectangle
+Replace rectangle with a structured player representation
 
 ## Overview
 
@@ -63,16 +63,20 @@ Validation:
 
 ## Phase 3 – Player Movement
 
-Status: ⬜ Not started
+Status: ✅ Completed
 
 Tasks:
-- [ ] Add player sprite
-- [ ] Handle input
-- [ ] 4-direction movement
+- [x] Add player sprite
+- [x] Handle input
+- [x] 4-direction movement
+- [x] Keep rectangle inside screen bounds
+- [x] Stabilize rendering without flicker
 
 Validation:
-- Player moves smoothly on screen
-
+- [x] Player moves smoothly on screen without flicker
+- [x] Player movement implemented with D-pad
+- [x] Rendering stabilized with proper VBlank synchronization
+  
 ---
 
 ## Phase 4 – Collision System

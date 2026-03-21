@@ -46,22 +46,28 @@ int main(void)
     int rectX = (SCREEN_WIDTH - rectWidth) / 2;
     int rectY = (SCREEN_HEIGHT - rectHeight) / 2;
 
+    // Track previous position so we can erase only the old rectangle.
+    int prevRectX = rectX;
+    int prevRectY = rectY;
+
     // Draw an initial frame so the rectangle is visible immediately.
     clearScreen(RGB5(0, 0, 0));
     drawFilledRect(rectX, rectY, rectWidth, rectHeight, RGB5(31, 31, 31));
 
     // Basic game loop:
-    // 1) read input
-    // 2) update position
-    // 3) clear screen
-    // 4) draw rectangle
-    // 5) wait for VBlank
+    // 1) wait for VBlank
+    // 2) read input
+    // 3) update/clamp position
+    // 4) erase old rectangle and draw new one
     while (1) {
-        // 1) Read the current input state for this frame.
+        // 1) Synchronize to VBlank so drawing happens between frames.
+        VBlankIntrWait();
+
+        // 2) Read the current input state for this frame.
         scanKeys();
         u16 keys = keysHeld();
 
-        // 2) Move one pixel per frame while a direction is held.
+        // 3) Move one pixel per frame while a direction is held.
         if (keys & KEY_UP) {
             rectY--;
         }
@@ -89,14 +95,18 @@ int main(void)
             rectY = SCREEN_HEIGHT - rectHeight;
         }
 
-        // 3) Clear background to black.
-        clearScreen(RGB5(0, 0, 0));
+        // 4) Erase the previous rectangle only if it moved.
+        // This avoids full-screen redraws that cause visible flicker in Mode 3.
+        if (rectX != prevRectX || rectY != prevRectY) {
+            drawFilledRect(prevRectX, prevRectY, rectWidth, rectHeight, RGB5(0, 0, 0));
+        }
 
-        // 4) Draw the white rectangle.
+        // Draw the white rectangle at the updated position.
         drawFilledRect(rectX, rectY, rectWidth, rectHeight, RGB5(31, 31, 31));
 
-        // 5) Wait for VBlank before the next frame.
-        VBlankIntrWait();
+        // Save position for the next frame's erase step.
+        prevRectX = rectX;
+        prevRectY = rectY;
     }
 
     return 0;
