@@ -2,7 +2,7 @@
 
 # Next Action
 
-Create minimal GBA project (main.c + Makefile)
+Add input handling and move a simple on-screen rectangle
 
 ## Overview
 
@@ -46,15 +46,18 @@ Validation:
 
 ## Phase 2 – Rendering Basics
 
-Status: ⏳ In progress
+Status: ✅ Completed
 
 Tasks:
 - [x] Initialize display mode
 - [x] Clear screen
 - [x] Display simple background
+- [x] Render test rectangle
+- [x] Render multiple colored rectangles
 
 Validation:
 - [x] Screen displays correctly without artifacts
+- [x] Multiple visible markers displayed correctly
 
 ---
 
@@ -139,7 +142,8 @@ Validation:
 - ROM successfully compiled
 - ROM successfully launched in mGBA
 
-- Rendered first visible object on screen (rectangle)
+- Rendering in Mode 3 validated
+- Multiple colored rectangles displayed successfully
 
 
 

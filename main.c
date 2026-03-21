@@ -42,13 +42,24 @@ int main(void)
     // Clear the entire screen to black.
     clearScreen(RGB5(0, 0, 0));
 
-    // Draw a small white test marker centered on screen.
-    // Rectangle size is intentionally small and easy to see.
+    // Rectangle size used for all three test markers.
     const int rectWidth = 20;
     const int rectHeight = 12;
-    const int rectX = (SCREEN_WIDTH - rectWidth) / 2;
+
+    // Keep all markers on the same horizontal row.
     const int rectY = (SCREEN_HEIGHT - rectHeight) / 2;
-    drawFilledRect(rectX, rectY, rectWidth, rectHeight, RGB5(31, 31, 31));
+
+    // Left marker (red).
+    const int leftRectX = 40;
+    drawFilledRect(leftRectX, rectY, rectWidth, rectHeight, RGB5(31, 0, 0));
+
+    // Center marker (white).
+    const int centerRectX = (SCREEN_WIDTH - rectWidth) / 2;
+    drawFilledRect(centerRectX, rectY, rectWidth, rectHeight, RGB5(31, 31, 31));
+
+    // Right marker (green).
+    const int rightRectX = SCREEN_WIDTH - rectWidth - 40;
+    drawFilledRect(rightRectX, rectY, rectWidth, rectHeight, RGB5(0, 31, 0));
 
     // Basic game loop: wait for each vertical blank.
     while (1) {
