@@ -23,7 +23,7 @@ $(error "libgba library not found at $(LIBGBA_LIB)/libgba.a")
 endif
 
 # Project output and build directory.
-TARGET := zelda_ocarina_of_time
+TARGET := roms/zelda_ocarina_of_time
 BUILD := build
 
 # Keep the project minimal: compile sources only from repository root.
