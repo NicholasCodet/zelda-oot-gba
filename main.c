@@ -23,6 +23,14 @@ typedef struct {
     Direction direction;
 } Player;
 
+// Simple rectangle type used for obstacle and collision checks.
+typedef struct {
+    int x;
+    int y;
+    int width;
+    int height;
+} Rect;
+
 // Clear the full Mode 3 framebuffer to a single color.
 static void clearScreen(u16 color)
 {
@@ -46,39 +54,88 @@ static void drawFilledRect(int x, int y, int width, int height, u16 color)
     }
 }
 
-// Update player position from input and keep it inside screen bounds.
-static void updatePlayer(Player *player, u16 keys, int rectWidth, int rectHeight)
+// Return 1 if two axis-aligned rectangles overlap, otherwise 0.
+static int isCollidingAABB(const Rect *a, const Rect *b)
 {
+    return (a->x < (b->x + b->width)) &&
+           ((a->x + a->width) > b->x) &&
+           (a->y < (b->y + b->height)) &&
+           ((a->y + a->height) > b->y);
+}
+
+// Update player position from input, screen bounds, and obstacle collision.
+static void updatePlayer(Player *player, u16 keys, int rectWidth, int rectHeight, const Rect *obstacle)
+{
+    // Compute requested movement for this frame.
+    int moveX = 0;
+    int moveY = 0;
+
     // Move one pixel per frame while a direction is held.
     if (keys & KEY_UP) {
-        player->y -= player->speed;
+        moveY -= player->speed;
         player->direction = DIRECTION_UP;
     }
     if (keys & KEY_DOWN) {
-        player->y += player->speed;
+        moveY += player->speed;
         player->direction = DIRECTION_DOWN;
     }
     if (keys & KEY_LEFT) {
-        player->x -= player->speed;
+        moveX -= player->speed;
         player->direction = DIRECTION_LEFT;
     }
     if (keys & KEY_RIGHT) {
-        player->x += player->speed;
+        moveX += player->speed;
         player->direction = DIRECTION_RIGHT;
     }
 
-    // Keep the rectangle inside the visible screen bounds.
-    if (player->x < 0) {
-        player->x = 0;
+    // Resolve X movement first.
+    if (moveX != 0) {
+        int nextX = player->x + moveX;
+
+        // Clamp to screen bounds on X.
+        if (nextX < 0) {
+            nextX = 0;
+        }
+        if (nextX > (SCREEN_WIDTH - rectWidth)) {
+            nextX = SCREEN_WIDTH - rectWidth;
+        }
+
+        // Test collision using new X and current Y.
+        Rect nextPlayerRectX = {
+            .x = nextX,
+            .y = player->y,
+            .width = rectWidth,
+            .height = rectHeight
+        };
+
+        if (!isCollidingAABB(&nextPlayerRectX, obstacle)) {
+            player->x = nextX;
+        }
     }
-    if (player->y < 0) {
-        player->y = 0;
-    }
-    if (player->x > (SCREEN_WIDTH - rectWidth)) {
-        player->x = SCREEN_WIDTH - rectWidth;
-    }
-    if (player->y > (SCREEN_HEIGHT - rectHeight)) {
-        player->y = SCREEN_HEIGHT - rectHeight;
+
+    // Resolve Y movement after X.
+    if (moveY != 0) {
+        int nextY = player->y + moveY;
+
+        // Clamp to screen bounds on Y.
+        if (nextY < 0) {
+            nextY = 0;
+        }
+        if (nextY > (SCREEN_HEIGHT - rectHeight)) {
+            nextY = SCREEN_HEIGHT - rectHeight;
+        }
+
+        // Test collision using current X and new Y.
+        Rect nextPlayerRectY = {
+            .x = player->x,
+            .y = nextY,
+            .width = rectWidth,
+            .height = rectHeight
+        };
+
+        if (!isCollidingAABB(&nextPlayerRectY, obstacle)) {
+            player->y = nextY;
+        }
     }
 }
 
@@ -102,6 +159,14 @@ int main(void)
     const int rectWidth = 12;
     const int rectHeight = 12;
 
+    // Fixed obstacle rectangle (drawn in red).
+    const Rect obstacle = {
+        .x = 60,
+        .y = 50,
+        .width = 48,
+        .height = 28
+    };
+
     // Create a simple player with centered start position and fixed speed.
     Player player = {
         .x = (SCREEN_WIDTH - rectWidth) / 2,
@@ -116,12 +181,13 @@ int main(void)
 
     // Draw an initial frame so the rectangle is visible immediately.
     clearScreen(RGB5(0, 0, 0));
+    drawFilledRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height, RGB5(31, 0, 0));
     drawPlayer(&player, rectWidth, rectHeight, RGB5(31, 31, 31));
 
     // Basic game loop:
     // 1) wait for VBlank
     // 2) read input
-    // 3) update/clamp position
+    // 3) update/clamp position with obstacle collision
     // 4) erase old rectangle and draw new one
     while (1) {
         // 1) Synchronize to VBlank so drawing happens between frames.
@@ -131,8 +197,8 @@ int main(void)
         scanKeys();
         u16 keys = keysHeld();
 
-        // 3) Update movement and bounds.
-        updatePlayer(&player, keys, rectWidth, rectHeight);
+        // 3) Update movement, bounds, and obstacle collision.
+        updatePlayer(&player, keys, rectWidth, rectHeight, &obstacle);
 
         // 4) Erase the previous rectangle only if it moved.
         // This avoids full-screen redraws that cause visible flicker in Mode 3.

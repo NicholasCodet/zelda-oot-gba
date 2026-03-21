@@ -2,7 +2,7 @@
 
 # Next Action
 
-Replace rectangle with a structured player representation
+Create a small test room with multiple obstacles
 
 ## Overview
 
@@ -13,15 +13,6 @@ The goal is to build a 2D Zelda-like game on Game Boy Advance, inspired by Ocari
 ---
 
 # Current Phase
-
-Phase 1 – Environment Setup
-
-Status: In progress
-
-Next objective:
-- Build a minimal GBA project
-- Compile a working ROM
-- Run it in mGBA
 
 ---
 
@@ -81,14 +72,19 @@ Validation:
 
 ## Phase 4 – Collision System
 
-Status: ⬜ Not started
+Status: ✅ Completed
 
 Tasks:
-- [ ] Tile-based collision
-- [ ] Solid tiles
+- [x] Add fixed obstacle
+- [x] Draw obstacle
+- [x] Implement AABB collision
+- [x] Block player movement on collision
+- [x] Separate X and Y axis movement
+- [x] Allow sliding along walls
 
 Validation:
-- Player cannot walk through walls
+- [x] Player cannot pass through obstacle
+- [x] Player can slide along walls smoothly
 
 ---
 
@@ -148,6 +144,16 @@ Validation:
 
 - Rendering in Mode 3 validated
 - Multiple colored rectangles displayed successfully
+
+- Refactored player state into a Player struct
+- Separated player update and draw logic into dedicated functions
+- Added player direction tracking
+- Player movement implemented with D-pad
+- Rendering stabilized with proper VBlank synchronization
+
+- Basic collision system implemented (player vs obstacle)
+- Collision handling improved with separated X/Y axis movement
+- Smooth wall sliding validated
 
 
 
