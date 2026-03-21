@@ -83,29 +83,13 @@ Tasks:
 - [x] Allow sliding along walls
 
 Validation:
-- [x] Player cannot pass through obstacle
-- [x] Player can slide along walls smoothly
+- [x] Player cannot pass through obstacles
+- [x] Player can slide along walls
+- [x] Player can navigate a multi-obstacle room
 
 ---
 
-## Phase 5 – Test Room
-
-Status: ✅ Completed
-
-Tasks:
-- [x] Create multiple obstacles
-- [x] Build a simple room layout
-- [x] Fix player spawn position
-- [x] Validate player movement inside the room
-
-Validation:
-- [x] Player can move freely in the room
-- [x] Player cannot exit the room
-- [x] Player collides correctly with all obstacles
-
----
-
-## Phase 6 – Interaction
+## Phase 5 – Interaction
 
 Status: ⬜ Not started
 
@@ -119,7 +103,7 @@ Validation:
 
 ---
 
-## Phase 7 – Combat
+## Phase 6 – Combat
 
 Status: ⬜ Not started
 
@@ -134,7 +118,7 @@ Validation:
 
 ---
 
-## Phase 8 – First Playable Slice
+## Phase 7 – First Playable Slice
 
 Status: ⬜ Not started
 
@@ -172,9 +156,9 @@ Validation:
 - Collision handling improved with separated X/Y axis movement
 - Smooth wall sliding validated
 
-- Created first playable room with multiple obstacles
-- Player spawn system corrected (no overlap)
-- Validated movement inside a constrained space
+- Built first navigable room using collision system
+- Fixed player spawn positioning
+- Validated movement in constrained space
 
 
 
