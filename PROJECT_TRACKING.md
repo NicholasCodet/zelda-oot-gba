@@ -46,15 +46,15 @@ Validation:
 
 ## Phase 2 – Rendering Basics
 
-Status: ⬜ Not started
+Status: ⏳ In progress
 
 Tasks:
-- [ ] Initialize display mode
-- [ ] Clear screen
-- [ ] Display simple background
+- [x] Initialize display mode
+- [x] Clear screen
+- [x] Display simple background
 
 Validation:
-- Screen displays correctly without artifacts
+- [x] Screen displays correctly without artifacts
 
 ---
 
@@ -138,6 +138,8 @@ Validation:
 - Makefile fixed and working
 - ROM successfully compiled
 - ROM successfully launched in mGBA
+
+- Rendered first visible object on screen (rectangle)
 
 
 

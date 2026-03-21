@@ -2,6 +2,33 @@
 #include <gba_video.h>
 #include <gba_interrupt.h>
 
+// GBA screen size in Mode 3.
+#define SCREEN_WIDTH 240
+#define SCREEN_HEIGHT 160
+
+// Clear the full Mode 3 framebuffer to a single color.
+static void clearScreen(u16 color)
+{
+    u16 *videoBuffer = (u16 *)MODE3_FB;
+    for (int i = 0; i < (SCREEN_WIDTH * SCREEN_HEIGHT); i++) {
+        videoBuffer[i] = color;
+    }
+}
+
+// Draw a filled rectangle in Mode 3.
+static void drawFilledRect(int x, int y, int width, int height, u16 color)
+{
+    u16 *videoBuffer = (u16 *)MODE3_FB;
+
+    for (int row = 0; row < height; row++) {
+        int drawY = y + row;
+        for (int col = 0; col < width; col++) {
+            int drawX = x + col;
+            videoBuffer[drawY * SCREEN_WIDTH + drawX] = color;
+        }
+    }
+}
+
 int main(void)
 {
     // Initialize the interrupt system so VBlank waiting works correctly.
@@ -12,12 +39,16 @@ int main(void)
     // Mode 3 is a simple bitmap mode we can clear to a solid color.
     REG_DISPCNT = MODE_3 | BG2_ON;
 
-    // Fill the entire screen with black (a blank screen).
-    // 240 * 160 pixels in Mode 3.
-    u16 *videoBuffer = (u16 *)MODE3_FB;
-    for (int i = 0; i < (240 * 160); i++) {
-        videoBuffer[i] = RGB5(0, 0, 0);
-    }
+    // Clear the entire screen to black.
+    clearScreen(RGB5(0, 0, 0));
+
+    // Draw a small white test marker centered on screen.
+    // Rectangle size is intentionally small and easy to see.
+    const int rectWidth = 20;
+    const int rectHeight = 12;
+    const int rectX = (SCREEN_WIDTH - rectWidth) / 2;
+    const int rectY = (SCREEN_HEIGHT - rectHeight) / 2;
+    drawFilledRect(rectX, rectY, rectWidth, rectHeight, RGB5(31, 31, 31));
 
     // Basic game loop: wait for each vertical blank.
     while (1) {
