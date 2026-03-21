@@ -29,18 +29,18 @@ Next objective:
 
 ## Phase 1 – Environment Setup
 
-Status: ⏳ In progress
+Status: ✅ Completed
 
 Tasks:
-- [ ] Install devkitPro
-- [ ] Install libgba
-- [ ] Create minimal project
-- [ ] Compile ROM (.gba)
-- [ ] Run ROM in emulator
+- [x] Install devkitPro
+- [x] Install libgba
+- [x] Create minimal project
+- [x] Compile ROM (.gba)
+- [x] Run ROM in emulator
 
 Validation:
-- ROM builds successfully
-- ROM launches in mGBA
+- [x] ROM builds successfully
+- [x] ROM launches in mGBA
 
 ---
 
@@ -134,7 +134,12 @@ Validation:
 
 # Completed
 
-(empty)
+- Minimal GBA project created
+- Makefile fixed and working
+- ROM successfully compiled
+- ROM successfully launched in mGBA
+
+
 
 # Project Architecture
 
