@@ -2,7 +2,7 @@
 
 # Next Action
 
-Create a small test room with multiple obstacles
+Add interaction system (simple trigger)
 
 ## Overview
 
@@ -88,7 +88,24 @@ Validation:
 
 ---
 
-## Phase 5 – Interaction
+## Phase 5 – Test Room
+
+Status: ✅ Completed
+
+Tasks:
+- [x] Create multiple obstacles
+- [x] Build a simple room layout
+- [x] Fix player spawn position
+- [x] Validate player movement inside the room
+
+Validation:
+- [x] Player can move freely in the room
+- [x] Player cannot exit the room
+- [x] Player collides correctly with all obstacles
+
+---
+
+## Phase 6 – Interaction
 
 Status: ⬜ Not started
 
@@ -102,7 +119,7 @@ Validation:
 
 ---
 
-## Phase 6 – Combat
+## Phase 7 – Combat
 
 Status: ⬜ Not started
 
@@ -117,7 +134,7 @@ Validation:
 
 ---
 
-## Phase 7 – First Playable Slice
+## Phase 8 – First Playable Slice
 
 Status: ⬜ Not started
 
@@ -154,6 +171,10 @@ Validation:
 - Basic collision system implemented (player vs obstacle)
 - Collision handling improved with separated X/Y axis movement
 - Smooth wall sliding validated
+
+- Created first playable room with multiple obstacles
+- Player spawn system corrected (no overlap)
+- Validated movement inside a constrained space
 
 
 

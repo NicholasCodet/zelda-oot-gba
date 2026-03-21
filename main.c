@@ -63,8 +63,20 @@ static int isCollidingAABB(const Rect *a, const Rect *b)
            ((a->y + a->height) > b->y);
 }
 
+// Return 1 if rect overlaps any obstacle in the list, otherwise 0.
+static int isCollidingWithAnyObstacle(const Rect *rect, const Rect *obstacles, int obstacleCount)
+{
+    for (int i = 0; i < obstacleCount; i++) {
+        if (isCollidingAABB(rect, &obstacles[i])) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 // Update player position from input, screen bounds, and obstacle collision.
-static void updatePlayer(Player *player, u16 keys, int rectWidth, int rectHeight, const Rect *obstacle)
+static void updatePlayer(Player *player, u16 keys, int rectWidth, int rectHeight, const Rect *obstacles, int obstacleCount)
 {
     // Compute requested movement for this frame.
     int moveX = 0;
@@ -108,7 +120,7 @@ static void updatePlayer(Player *player, u16 keys, int rectWidth, int rectHeight
             .height = rectHeight
         };
 
-        if (!isCollidingAABB(&nextPlayerRectX, obstacle)) {
+        if (!isCollidingWithAnyObstacle(&nextPlayerRectX, obstacles, obstacleCount)) {
             player->x = nextX;
         }
     }
@@ -133,7 +145,7 @@ static void updatePlayer(Player *player, u16 keys, int rectWidth, int rectHeight
             .height = rectHeight
         };
 
-        if (!isCollidingAABB(&nextPlayerRectY, obstacle)) {
+        if (!isCollidingWithAnyObstacle(&nextPlayerRectY, obstacles, obstacleCount)) {
             player->y = nextY;
         }
     }
@@ -159,18 +171,24 @@ int main(void)
     const int rectWidth = 12;
     const int rectHeight = 12;
 
-    // Fixed obstacle rectangle (drawn in red).
-    const Rect obstacle = {
-        .x = 60,
-        .y = 50,
-        .width = 48,
-        .height = 28
-    };
+    // Fixed obstacle list (all drawn in red) forming a small test room.
+    const Rect obstacles[] = {
+        // Room walls.
+        { .x = 20, .y = 20, .width = 200, .height = 8 },   // Top wall
+        { .x = 20, .y = 132, .width = 200, .height = 8 },  // Bottom wall
+        { .x = 20, .y = 20, .width = 8, .height = 120 },   // Left wall
+        { .x = 212, .y = 20, .width = 8, .height = 120 },  // Right wall
 
-    // Create a simple player with centered start position and fixed speed.
+        // Internal block to test sliding/collision in the room.
+        { .x = 100, .y = 64, .width = 40, .height = 24 }
+    };
+    const int obstacleCount = sizeof(obstacles) / sizeof(obstacles[0]);
+
+    // Create a simple player with a fixed walkable spawn and fixed speed.
+    // This spawn is inside the room and does not overlap any obstacle.
     Player player = {
-        .x = (SCREEN_WIDTH - rectWidth) / 2,
-        .y = (SCREEN_HEIGHT - rectHeight) / 2,
+        .x = 40,
+        .y = 40,
         .speed = 1,
         .direction = DIRECTION_DOWN
     };
@@ -181,7 +199,9 @@ int main(void)
 
     // Draw an initial frame so the rectangle is visible immediately.
     clearScreen(RGB5(0, 0, 0));
-    drawFilledRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height, RGB5(31, 0, 0));
+    for (int i = 0; i < obstacleCount; i++) {
+        drawFilledRect(obstacles[i].x, obstacles[i].y, obstacles[i].width, obstacles[i].height, RGB5(31, 0, 0));
+    }
     drawPlayer(&player, rectWidth, rectHeight, RGB5(31, 31, 31));
 
     // Basic game loop:
@@ -198,7 +218,7 @@ int main(void)
         u16 keys = keysHeld();
 
         // 3) Update movement, bounds, and obstacle collision.
-        updatePlayer(&player, keys, rectWidth, rectHeight, &obstacle);
+        updatePlayer(&player, keys, rectWidth, rectHeight, obstacles, obstacleCount);
 
         // 4) Erase the previous rectangle only if it moved.
         // This avoids full-screen redraws that cause visible flicker in Mode 3.
