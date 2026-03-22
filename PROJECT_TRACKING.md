@@ -2,7 +2,7 @@
 
 # Next Action
 
-Create a small puzzle goal and a simple win condition
+Introduce basic combat system (player attack)
 
 ## Overview
 
@@ -103,6 +103,13 @@ Tasks:
 - [x] Support multiple interactive objects
 - [x] Support multiple independent obstacles
 - [x] Refactor interaction logic using reusable object structures
+- [x] Link interaction to world changes
+- [x] Create a simple puzzle using interactions
+- [x] Add a win condition based on world state + player position
+- [x] Improved puzzle readability
+- [x] Inverted interaction logic (objects remove obstacles)
+- [x] Ensured obstacles fully block progression
+- [x] Validated intuitive puzzle behavior
 
 Validation:
 - [x] Interaction works only near the object
@@ -113,6 +120,7 @@ Validation:
 - [x] Validated independent object-obstacle relationships
 - [x] Improved scalability of interaction logic
 - [x] Refactor preserved behavior
+  
 
 ---
 
@@ -182,6 +190,10 @@ Validation:
 - Validated independent object-obstacle relationships
 - Improved scalability of interaction logic
 - Refactored interaction logic using reusable object structures
+- Built first complete gameplay loop (move → interact → solve → reach goal)
+- Validated puzzle logic based on world state and player position
+- Designed first intuitive puzzle (unlock path via interaction)
+- Validated player understanding through level design
 
 # Project Architecture
 

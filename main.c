@@ -218,13 +218,15 @@ int main(void)
     const int rectHeight = 12;
 
     // Two interactive objects; each controls one toggle obstacle.
+    // Objects start OFF, and their linked obstacles start ON (blocking).
     GameObject interactiveObjects[] = {
-        { .x = 170, .y = 80, .width = 16, .height = 16, .active = 0 },
-        { .x = 40, .y = 100, .width = 16, .height = 16, .active = 0 }
+        { .x = 52, .y = 44, .width = 16, .height = 16, .active = 0 },
+        { .x = 52, .y = 96, .width = 16, .height = 16, .active = 0 }
     };
     GameObject toggleObstacles[] = {
-        { .x = 150, .y = 40, .width = 24, .height = 24, .active = 0 },
-        { .x = 68, .y = 88, .width = 28, .height = 20, .active = 0 }
+        // These two vertical gates form a full-height barrier to the goal side.
+        { .x = 150, .y = 28, .width = 12, .height = 104, .active = 1 },
+        { .x = 162, .y = 28, .width = 12, .height = 104, .active = 1 }
     };
     const int interactiveCount = sizeof(interactiveObjects) / sizeof(interactiveObjects[0]);
 
@@ -234,6 +236,17 @@ int main(void)
 
     // Shared interaction distance.
     const int interactionRange = 10;
+
+    // Goal area for the simple win condition.
+    // The player wins by reaching this area after activating the room interactions.
+    GameObject goalArea = {
+        .x = 184,
+        .y = 34,
+        .width = 18,
+        .height = 18,
+        .active = 1
+    };
+    int hasWon = 0;
 
     // Fixed room obstacles (always active).
     GameObject roomObstacles[] = {
@@ -282,6 +295,7 @@ int main(void)
             interactiveOffColor[i]
         );
     }
+    drawFilledRect(goalArea.x, goalArea.y, goalArea.width, goalArea.height, RGB5(31, 0, 31));
     drawPlayer(&player, rectWidth, rectHeight, RGB5(31, 31, 31));
 
     // Basic game loop:
@@ -316,8 +330,16 @@ int main(void)
             if ((keysPressed & KEY_A) && isPlayerNearObject(&player, rectWidth, rectHeight, &interactiveObjects[i], interactionRange)) {
                 int nextState = !interactiveObjects[i].active;
 
-                // Prevent activation if its obstacle would overlap the player.
+                // Inverted logic:
+                // object ON  -> linked obstacle OFF (path opens)
+                // object OFF -> linked obstacle ON  (path closes)
                 if (nextState) {
+                    // Activating the object removes its obstacle.
+                    interactiveObjects[i].active = 1;
+                    toggleObstacles[i].active = 0;
+                } else {
+                    // Deactivating the object restores its obstacle.
+                    // Keep the overlap guard to avoid trapping the player.
                     GameObject playerRect = {
                         .x = player.x,
                         .y = player.y,
@@ -327,13 +349,36 @@ int main(void)
                     };
 
                     if (!isCollidingAABB(&playerRect, &toggleObstacles[i])) {
-                        interactiveObjects[i].active = nextState;
-                        toggleObstacles[i].active = nextState;
+                        interactiveObjects[i].active = 0;
+                        toggleObstacles[i].active = 1;
                     }
-                } else {
-                    // Turning OFF is always safe.
-                    interactiveObjects[i].active = nextState;
-                    toggleObstacles[i].active = nextState;
+                }
+            }
+        }
+
+        // Check win condition:
+        // 1) all interactive objects are active
+        // 2) player rectangle overlaps the goal area
+        if (!hasWon) {
+            int allInteractionsActive = 1;
+            for (int i = 0; i < interactiveCount; i++) {
+                if (!interactiveObjects[i].active) {
+                    allInteractionsActive = 0;
+                    break;
+                }
+            }
+
+            if (allInteractionsActive) {
+                GameObject playerRect = {
+                    .x = player.x,
+                    .y = player.y,
+                    .width = rectWidth,
+                    .height = rectHeight,
+                    .active = 1
+                };
+
+                if (isCollidingAABB(&playerRect, &goalArea)) {
+                    hasWon = 1;
                 }
             }
         }
@@ -380,6 +425,13 @@ int main(void)
                     RGB5(0, 0, 0)
                 );
             }
+        }
+
+        // Draw the goal area and change color when the player has won.
+        if (hasWon) {
+            drawFilledRect(goalArea.x, goalArea.y, goalArea.width, goalArea.height, RGB5(31, 31, 31));
+        } else {
+            drawFilledRect(goalArea.x, goalArea.y, goalArea.width, goalArea.height, RGB5(31, 0, 31));
         }
 
         // Draw the white rectangle at the updated position.
