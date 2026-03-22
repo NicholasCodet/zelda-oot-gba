@@ -2,8 +2,7 @@
 
 # Next Action
 
-Introduce basic enemy behavior (movement or state)
-
+Fix enemy patrol collision with room obstacles
 ## Overview
 
 This document tracks the progress of the project.
@@ -137,6 +136,8 @@ Tasks:
 - [x] Fix attack rendering trail
 - [x] Fix rendering flicker
 - [x] Restore background under dynamic elements correctly
+- [x] Add simple enemy movement
+- [ ] Make enemy respect room obstacle collisions
 
 - [ ] Sword attack
 - [ ] Enemy entity

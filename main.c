@@ -335,8 +335,8 @@ int main(void)
     };
     int hasWon = 0;
 
-    // Simple static enemy target for combat testing.
-    // It stays visible until hit by the player's attack.
+    // Enemy target for combat testing.
+    // It patrols horizontally in a small range and disappears when hit.
     GameObject enemyTarget = {
         .x = 116,
         .y = 40,
@@ -344,6 +344,10 @@ int main(void)
         .height = 14,
         .active = 1
     };
+    const int enemyStartX = enemyTarget.x;
+    const int enemyMoveRange = 24;
+    const int enemyMoveSpeed = 1;
+    int enemyMoveDirection = 1; // 1 = right, -1 = left
 
     // Simple short-lived attack hitbox.
     const int attackWidth = 10;
@@ -395,6 +399,14 @@ int main(void)
         .active = 0
     };
     int prevAttackWasActive = 0;
+    GameObject prevEnemyRect = {
+        .x = enemyTarget.x,
+        .y = enemyTarget.y,
+        .width = enemyTarget.width,
+        .height = enemyTarget.height,
+        .active = enemyTarget.active
+    };
+    int prevEnemyWasActive = enemyTarget.active;
 
     // Draw the initial scene once.
     GameObject fullScreenRegion = {
@@ -437,7 +449,6 @@ int main(void)
 
         // Save current semi-static states so we can detect visual changes.
         int previousHasWon = hasWon;
-        int previousEnemyActive = enemyTarget.active;
         int previousInteractiveState[interactiveCount];
         int previousToggleState[interactiveCount];
         for (int i = 0; i < interactiveCount; i++) {
@@ -456,6 +467,41 @@ int main(void)
             toggleObstacles,
             interactiveCount
         );
+
+        // Move the enemy in a simple left/right patrol range while active.
+        // Use next-position collision checks against active obstacles.
+        if (enemyTarget.active) {
+            int nextX = enemyTarget.x + (enemyMoveDirection * enemyMoveSpeed);
+            int minX = enemyStartX - enemyMoveRange;
+            int maxX = enemyStartX + enemyMoveRange;
+
+            // Reverse at patrol bounds and skip this movement step.
+            if (nextX < minX || nextX > maxX) {
+                enemyMoveDirection = -enemyMoveDirection;
+            } else {
+                // Test the enemy's next rectangle against active room and toggle obstacles.
+                GameObject nextEnemyRect = {
+                    .x = nextX,
+                    .y = enemyTarget.y,
+                    .width = enemyTarget.width,
+                    .height = enemyTarget.height,
+                    .active = 1
+                };
+
+                int enemyBlocked = isCollidingWithActiveObjects(&nextEnemyRect, roomObstacles, roomObstacleCount);
+                if (!enemyBlocked) {
+                    enemyBlocked = isCollidingWithActiveObjects(&nextEnemyRect, toggleObstacles, interactiveCount);
+                }
+
+                if (enemyBlocked) {
+                    // Do not enter obstacles; reverse direction for the next frame.
+                    enemyMoveDirection = -enemyMoveDirection;
+                } else {
+                    // Free path: apply the movement.
+                    enemyTarget.x = nextX;
+                }
+            }
+        }
 
         // B button attack:
         // Spawn a short attack hitbox in front of the player based on direction.
@@ -581,6 +627,22 @@ int main(void)
                 &enemyTarget
             );
         }
+        if (prevEnemyWasActive) {
+            redrawSceneRegion(
+                &prevEnemyRect,
+                roomObstacles,
+                roomObstacleCount,
+                toggleObstacles,
+                interactiveCount,
+                interactiveObjects,
+                interactiveCount,
+                interactiveOffColor,
+                interactiveOnColor,
+                &goalArea,
+                hasWon,
+                &enemyTarget
+            );
+        }
 
         // Restore regions for semi-static objects whose state changed this frame.
         for (int i = 0; i < interactiveCount; i++) {
@@ -633,21 +695,9 @@ int main(void)
                 &enemyTarget
             );
         }
-        if (previousEnemyActive != enemyTarget.active) {
-            redrawSceneRegion(
-                &enemyTarget,
-                roomObstacles,
-                roomObstacleCount,
-                toggleObstacles,
-                interactiveCount,
-                interactiveObjects,
-                interactiveCount,
-                interactiveOffColor,
-                interactiveOnColor,
-                &goalArea,
-                hasWon,
-                &enemyTarget
-            );
+        // Draw the enemy at its current patrol position while active.
+        if (enemyTarget.active) {
+            drawFilledRect(enemyTarget.x, enemyTarget.y, enemyTarget.width, enemyTarget.height, RGB5(31, 16, 0));
         }
 
         // Draw attack hitbox while it is active.
@@ -670,6 +720,13 @@ int main(void)
             prevAttackWasActive = 1;
         } else {
             prevAttackWasActive = 0;
+        }
+
+        if (enemyTarget.active) {
+            prevEnemyRect = enemyTarget;
+            prevEnemyWasActive = 1;
+        } else {
+            prevEnemyWasActive = 0;
         }
     }
 
