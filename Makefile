@@ -1,5 +1,8 @@
-# Minimal devkitPro/libgba Makefile for a single-file GBA project.
-# It builds zelda_ocarina_of_time.gba from main.c.
+# Minimal devkitPro/libgba Makefile for a small modular GBA project.
+# It builds zelda_ocarina_of_time.gba from sources under src/.
+
+# Absolute project root path (stable in top-level and recursive builds).
+PROJECT_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 # Default devkitPro installation path for this machine.
 DEVKITPRO ?= /opt/devkitpro
@@ -26,14 +29,14 @@ endif
 TARGET := roms/zelda_ocarina_of_time
 BUILD := build
 
-# Keep the project minimal: compile sources only from repository root.
-SOURCES := .
+# Keep the project minimal: compile C sources only from src/.
+SOURCES := src
 
 # GBA CPU flags.
 ARCH := -mthumb -mthumb-interwork
 
-# Compile flags with explicit libgba include path.
-CFLAGS := -g -Wall -O2 $(ARCH) -I$(LIBGBA_INC)
+# Compile flags with explicit libgba include path and local include/ headers.
+CFLAGS := -g -Wall -O2 $(ARCH) -I$(LIBGBA_INC) -I$(PROJECT_ROOT)/include
 CXXFLAGS := $(CFLAGS)
 LDFLAGS := -g $(ARCH)
 
