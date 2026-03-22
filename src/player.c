@@ -19,6 +19,9 @@ void initPlayer(
     player->invulnerabilityFrames = invulnerabilityFrames;
     player->invulnerabilityTimer = 0;
     player->isDead = 0;
+    player->knockbackX = 0;
+    player->knockbackY = 0;
+    player->knockbackTimer = 0;
 }
 
 void tickPlayerInvulnerability(Player *player)
@@ -56,26 +59,33 @@ void updatePlayerMovement(
         return;
     }
 
-    // Compute requested movement for this frame.
     int moveX = 0;
     int moveY = 0;
 
-    // Move one pixel per frame while a direction is held.
-    if (keys & KEY_UP) {
-        moveY -= player->speed;
-        player->direction = DIRECTION_UP;
-    }
-    if (keys & KEY_DOWN) {
-        moveY += player->speed;
-        player->direction = DIRECTION_DOWN;
-    }
-    if (keys & KEY_LEFT) {
-        moveX -= player->speed;
-        player->direction = DIRECTION_LEFT;
-    }
-    if (keys & KEY_RIGHT) {
-        moveX += player->speed;
-        player->direction = DIRECTION_RIGHT;
+    // Apply knockback movement first.
+    // While active, normal directional movement is temporarily disabled.
+    if (player->knockbackTimer > 0) {
+        moveX = player->knockbackX;
+        moveY = player->knockbackY;
+        player->knockbackTimer--;
+    } else {
+        // Move one pixel per frame while a direction is held.
+        if (keys & KEY_UP) {
+            moveY -= player->speed;
+            player->direction = DIRECTION_UP;
+        }
+        if (keys & KEY_DOWN) {
+            moveY += player->speed;
+            player->direction = DIRECTION_DOWN;
+        }
+        if (keys & KEY_LEFT) {
+            moveX -= player->speed;
+            player->direction = DIRECTION_LEFT;
+        }
+        if (keys & KEY_RIGHT) {
+            moveX += player->speed;
+            player->direction = DIRECTION_RIGHT;
+        }
     }
 
     // Resolve X movement first.

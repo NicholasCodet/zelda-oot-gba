@@ -75,6 +75,7 @@ void updateCombat(
         attack->active = 0;
         attack->timer = 0;
         attack->hasHitEnemy = 0;
+        player->knockbackTimer = 0;
         return;
     }
 
@@ -116,12 +117,28 @@ void updateCombat(
             }
             player->invulnerabilityTimer = player->invulnerabilityFrames;
 
+            // Apply a short knockback away from the enemy.
+            // Keep it simple: fixed speed and duration.
+            {
+                const int knockbackSpeed = 2;
+                const int knockbackFrames = 6;
+                int playerCenterX = player->x + (playerWidth / 2);
+                int playerCenterY = player->y + (playerHeight / 2);
+                int enemyCenterX = enemy->x + (enemy->width / 2);
+                int enemyCenterY = enemy->y + (enemy->height / 2);
+
+                player->knockbackX = (playerCenterX >= enemyCenterX) ? knockbackSpeed : -knockbackSpeed;
+                player->knockbackY = (playerCenterY >= enemyCenterY) ? knockbackSpeed : -knockbackSpeed;
+                player->knockbackTimer = knockbackFrames;
+            }
+
             // Enter dead state immediately when health reaches zero.
             if (player->health == 0) {
                 player->isDead = 1;
                 attack->timer = 0;
                 attack->hasHitEnemy = 0;
                 attack->active = 0;
+                player->knockbackTimer = 0;
             }
         }
     }

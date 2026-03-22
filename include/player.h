@@ -25,6 +25,11 @@ typedef struct Player {
     int invulnerabilityFrames;
     int invulnerabilityTimer;
     int isDead;
+
+    // Simple temporary knockback state.
+    int knockbackX;
+    int knockbackY;
+    int knockbackTimer;
 } Player;
 
 void initPlayer(
