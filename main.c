@@ -32,24 +32,37 @@ typedef struct {
     int active;
 } GameObject;
 
-// Clear the full Mode 3 framebuffer to a single color.
-static void clearScreen(u16 color)
-{
-    volatile u16 *videoBuffer = (volatile u16 *)MODE3_FB;
-    for (int i = 0; i < (SCREEN_WIDTH * SCREEN_HEIGHT); i++) {
-        videoBuffer[i] = color;
-    }
-}
-
 // Draw a filled rectangle in Mode 3.
 static void drawFilledRect(int x, int y, int width, int height, u16 color)
 {
     volatile u16 *videoBuffer = (volatile u16 *)MODE3_FB;
 
-    for (int row = 0; row < height; row++) {
-        int drawY = y + row;
-        for (int col = 0; col < width; col++) {
-            int drawX = x + col;
+    // Clip rectangle bounds to the visible screen to avoid out-of-range writes.
+    int startX = x;
+    int startY = y;
+    int endX = x + width;
+    int endY = y + height;
+
+    if (startX < 0) {
+        startX = 0;
+    }
+    if (startY < 0) {
+        startY = 0;
+    }
+    if (endX > SCREEN_WIDTH) {
+        endX = SCREEN_WIDTH;
+    }
+    if (endY > SCREEN_HEIGHT) {
+        endY = SCREEN_HEIGHT;
+    }
+
+    // If fully off-screen, nothing needs to be drawn.
+    if (startX >= endX || startY >= endY) {
+        return;
+    }
+
+    for (int drawY = startY; drawY < endY; drawY++) {
+        for (int drawX = startX; drawX < endX; drawX++) {
             videoBuffer[drawY * SCREEN_WIDTH + drawX] = color;
         }
     }
@@ -203,6 +216,80 @@ static void drawPlayer(const Player *player, int rectWidth, int rectHeight, u16 
     drawFilledRect(player->x, player->y, rectWidth, rectHeight, color);
 }
 
+// Redraw only one region of the scene.
+// This restores background/static content underneath moving elements.
+static void redrawSceneRegion(
+    const GameObject *region,
+    const GameObject *roomObstacles,
+    int roomObstacleCount,
+    const GameObject *toggleObstacles,
+    int toggleObstacleCount,
+    const GameObject *interactiveObjects,
+    int interactiveCount,
+    const u16 *interactiveOffColor,
+    const u16 *interactiveOnColor,
+    const GameObject *goalArea,
+    int hasWon,
+    const GameObject *enemyTarget
+)
+{
+    // Start by restoring background color in this region.
+    drawFilledRect(region->x, region->y, region->width, region->height, RGB5(0, 0, 0));
+
+    // Restore always-on room obstacles.
+    for (int i = 0; i < roomObstacleCount; i++) {
+        if (roomObstacles[i].active && isCollidingAABB(region, &roomObstacles[i])) {
+            drawFilledRect(
+                roomObstacles[i].x,
+                roomObstacles[i].y,
+                roomObstacles[i].width,
+                roomObstacles[i].height,
+                RGB5(31, 0, 0)
+            );
+        }
+    }
+
+    // Restore currently active toggle obstacles.
+    for (int i = 0; i < toggleObstacleCount; i++) {
+        if (toggleObstacles[i].active && isCollidingAABB(region, &toggleObstacles[i])) {
+            drawFilledRect(
+                toggleObstacles[i].x,
+                toggleObstacles[i].y,
+                toggleObstacles[i].width,
+                toggleObstacles[i].height,
+                RGB5(31, 0, 0)
+            );
+        }
+    }
+
+    // Restore interactive objects using their current OFF/ON color states.
+    for (int i = 0; i < interactiveCount; i++) {
+        if (isCollidingAABB(region, &interactiveObjects[i])) {
+            drawFilledRect(
+                interactiveObjects[i].x,
+                interactiveObjects[i].y,
+                interactiveObjects[i].width,
+                interactiveObjects[i].height,
+                interactiveObjects[i].active ? interactiveOnColor[i] : interactiveOffColor[i]
+            );
+        }
+    }
+
+    // Restore goal with current win color.
+    if (goalArea->active && isCollidingAABB(region, goalArea)) {
+        if (hasWon) {
+            drawFilledRect(goalArea->x, goalArea->y, goalArea->width, goalArea->height, RGB5(31, 31, 31));
+        } else {
+            drawFilledRect(goalArea->x, goalArea->y, goalArea->width, goalArea->height, RGB5(31, 0, 31));
+        }
+    }
+
+    // Restore enemy only when active.
+    if (enemyTarget->active && isCollidingAABB(region, enemyTarget)) {
+        drawFilledRect(enemyTarget->x, enemyTarget->y, enemyTarget->width, enemyTarget->height, RGB5(31, 16, 0));
+    }
+}
+
 int main(void)
 {
     // Initialize the interrupt system so VBlank waiting works correctly.
@@ -248,6 +335,29 @@ int main(void)
     };
     int hasWon = 0;
 
+    // Simple static enemy target for combat testing.
+    // It stays visible until hit by the player's attack.
+    GameObject enemyTarget = {
+        .x = 116,
+        .y = 40,
+        .width = 14,
+        .height = 14,
+        .active = 1
+    };
+
+    // Simple short-lived attack hitbox.
+    const int attackWidth = 10;
+    const int attackHeight = 10;
+    const int attackDurationFrames = 6;
+    int attackTimer = 0;
+    GameObject attackHitbox = {
+        .x = 0,
+        .y = 0,
+        .width = attackWidth,
+        .height = attackHeight,
+        .active = 0
+    };
+
     // Fixed room obstacles (always active).
     GameObject roomObstacles[] = {
         // Room walls.
@@ -269,33 +379,45 @@ int main(void)
         .direction = DIRECTION_DOWN
     };
 
-    // Track previous position so we can erase only the old rectangle.
-    int prevRectX = player.x;
-    int prevRectY = player.y;
+    // Track previous dynamic rectangles for incremental redraw.
+    GameObject prevPlayerRect = {
+        .x = player.x,
+        .y = player.y,
+        .width = rectWidth,
+        .height = rectHeight,
+        .active = 1
+    };
+    GameObject prevAttackRect = {
+        .x = 0,
+        .y = 0,
+        .width = attackWidth,
+        .height = attackHeight,
+        .active = 0
+    };
+    int prevAttackWasActive = 0;
 
-    // Draw an initial frame so the rectangle is visible immediately.
-    clearScreen(RGB5(0, 0, 0));
-    for (int i = 0; i < roomObstacleCount; i++) {
-        if (roomObstacles[i].active) {
-            drawFilledRect(
-                roomObstacles[i].x,
-                roomObstacles[i].y,
-                roomObstacles[i].width,
-                roomObstacles[i].height,
-                RGB5(31, 0, 0)
-            );
-        }
-    }
-    for (int i = 0; i < interactiveCount; i++) {
-        drawFilledRect(
-            interactiveObjects[i].x,
-            interactiveObjects[i].y,
-            interactiveObjects[i].width,
-            interactiveObjects[i].height,
-            interactiveOffColor[i]
-        );
-    }
-    drawFilledRect(goalArea.x, goalArea.y, goalArea.width, goalArea.height, RGB5(31, 0, 31));
+    // Draw the initial scene once.
+    GameObject fullScreenRegion = {
+        .x = 0,
+        .y = 0,
+        .width = SCREEN_WIDTH,
+        .height = SCREEN_HEIGHT,
+        .active = 1
+    };
+    redrawSceneRegion(
+        &fullScreenRegion,
+        roomObstacles,
+        roomObstacleCount,
+        toggleObstacles,
+        interactiveCount,
+        interactiveObjects,
+        interactiveCount,
+        interactiveOffColor,
+        interactiveOnColor,
+        &goalArea,
+        hasWon,
+        &enemyTarget
+    );
     drawPlayer(&player, rectWidth, rectHeight, RGB5(31, 31, 31));
 
     // Basic game loop:
@@ -303,7 +425,7 @@ int main(void)
     // 2) read input
     // 3) update/clamp position with obstacle collision
     // 4) handle interaction
-    // 5) erase old rectangle and redraw dynamic objects
+    // 5) restore changed regions and draw current dynamic elements
     while (1) {
         // 1) Synchronize to VBlank so drawing happens between frames.
         VBlankIntrWait();
@@ -312,6 +434,16 @@ int main(void)
         scanKeys();
         u16 keys = keysHeld();
         u16 keysPressed = keysDown();
+
+        // Save current semi-static states so we can detect visual changes.
+        int previousHasWon = hasWon;
+        int previousEnemyActive = enemyTarget.active;
+        int previousInteractiveState[interactiveCount];
+        int previousToggleState[interactiveCount];
+        for (int i = 0; i < interactiveCount; i++) {
+            previousInteractiveState[i] = interactiveObjects[i].active;
+            previousToggleState[i] = toggleObstacles[i].active;
+        }
 
         // 3) Update movement, bounds, and obstacle collision.
         updatePlayer(
@@ -324,6 +456,41 @@ int main(void)
             toggleObstacles,
             interactiveCount
         );
+
+        // B button attack:
+        // Spawn a short attack hitbox in front of the player based on direction.
+        if ((keysPressed & KEY_B) && attackTimer == 0) {
+            attackTimer = attackDurationFrames;
+            attackHitbox.active = 1;
+            attackHitbox.width = attackWidth;
+            attackHitbox.height = attackHeight;
+
+            if (player.direction == DIRECTION_UP) {
+                attackHitbox.x = player.x + (rectWidth - attackWidth) / 2;
+                attackHitbox.y = player.y - attackHeight;
+            } else if (player.direction == DIRECTION_DOWN) {
+                attackHitbox.x = player.x + (rectWidth - attackWidth) / 2;
+                attackHitbox.y = player.y + rectHeight;
+            } else if (player.direction == DIRECTION_LEFT) {
+                attackHitbox.x = player.x - attackWidth;
+                attackHitbox.y = player.y + (rectHeight - attackHeight) / 2;
+            } else { // DIRECTION_RIGHT
+                attackHitbox.x = player.x + rectWidth;
+                attackHitbox.y = player.y + (rectHeight - attackHeight) / 2;
+            }
+        }
+
+        // Keep attack active for a few frames and resolve enemy hit.
+        if (attackTimer > 0) {
+            if (enemyTarget.active && attackHitbox.active && isCollidingAABB(&attackHitbox, &enemyTarget)) {
+                enemyTarget.active = 0;
+            }
+
+            attackTimer--;
+            if (attackTimer == 0) {
+                attackHitbox.active = 0;
+            }
+        }
 
         // 4) Handle interaction with each object independently.
         for (int i = 0; i < interactiveCount; i++) {
@@ -383,63 +550,127 @@ int main(void)
             }
         }
 
-        // 5) Erase the previous rectangle only if it moved.
-        // This avoids full-screen redraws that cause visible flicker in Mode 3.
-        if (player.x != prevRectX || player.y != prevRectY) {
-            Player previousPlayer = {
-                .x = prevRectX,
-                .y = prevRectY,
-                .speed = player.speed,
-                .direction = player.direction
-            };
-            drawPlayer(&previousPlayer, rectWidth, rectHeight, RGB5(0, 0, 0));
-        }
-
-        // Draw interactive objects with OFF/ON colors.
-        for (int i = 0; i < interactiveCount; i++) {
-            drawFilledRect(
-                interactiveObjects[i].x,
-                interactiveObjects[i].y,
-                interactiveObjects[i].width,
-                interactiveObjects[i].height,
-                interactiveObjects[i].active ? interactiveOnColor[i] : interactiveOffColor[i]
+        // 5) Restore the regions where dynamic elements were previously drawn.
+        redrawSceneRegion(
+            &prevPlayerRect,
+            roomObstacles,
+            roomObstacleCount,
+            toggleObstacles,
+            interactiveCount,
+            interactiveObjects,
+            interactiveCount,
+            interactiveOffColor,
+            interactiveOnColor,
+            &goalArea,
+            hasWon,
+            &enemyTarget
+        );
+        if (prevAttackWasActive) {
+            redrawSceneRegion(
+                &prevAttackRect,
+                roomObstacles,
+                roomObstacleCount,
+                toggleObstacles,
+                interactiveCount,
+                interactiveObjects,
+                interactiveCount,
+                interactiveOffColor,
+                interactiveOnColor,
+                &goalArea,
+                hasWon,
+                &enemyTarget
             );
         }
 
-        // Draw each interaction-controlled obstacle only when active.
+        // Restore regions for semi-static objects whose state changed this frame.
         for (int i = 0; i < interactiveCount; i++) {
-            if (toggleObstacles[i].active) {
-                drawFilledRect(
-                    toggleObstacles[i].x,
-                    toggleObstacles[i].y,
-                    toggleObstacles[i].width,
-                    toggleObstacles[i].height,
-                    RGB5(31, 0, 0)
+            if (previousInteractiveState[i] != interactiveObjects[i].active) {
+                redrawSceneRegion(
+                    &interactiveObjects[i],
+                    roomObstacles,
+                    roomObstacleCount,
+                    toggleObstacles,
+                    interactiveCount,
+                    interactiveObjects,
+                    interactiveCount,
+                    interactiveOffColor,
+                    interactiveOnColor,
+                    &goalArea,
+                    hasWon,
+                    &enemyTarget
                 );
-            } else {
-                drawFilledRect(
-                    toggleObstacles[i].x,
-                    toggleObstacles[i].y,
-                    toggleObstacles[i].width,
-                    toggleObstacles[i].height,
-                    RGB5(0, 0, 0)
+            }
+            if (previousToggleState[i] != toggleObstacles[i].active) {
+                redrawSceneRegion(
+                    &toggleObstacles[i],
+                    roomObstacles,
+                    roomObstacleCount,
+                    toggleObstacles,
+                    interactiveCount,
+                    interactiveObjects,
+                    interactiveCount,
+                    interactiveOffColor,
+                    interactiveOnColor,
+                    &goalArea,
+                    hasWon,
+                    &enemyTarget
                 );
             }
         }
+        if (previousHasWon != hasWon) {
+            redrawSceneRegion(
+                &goalArea,
+                roomObstacles,
+                roomObstacleCount,
+                toggleObstacles,
+                interactiveCount,
+                interactiveObjects,
+                interactiveCount,
+                interactiveOffColor,
+                interactiveOnColor,
+                &goalArea,
+                hasWon,
+                &enemyTarget
+            );
+        }
+        if (previousEnemyActive != enemyTarget.active) {
+            redrawSceneRegion(
+                &enemyTarget,
+                roomObstacles,
+                roomObstacleCount,
+                toggleObstacles,
+                interactiveCount,
+                interactiveObjects,
+                interactiveCount,
+                interactiveOffColor,
+                interactiveOnColor,
+                &goalArea,
+                hasWon,
+                &enemyTarget
+            );
+        }
 
-        // Draw the goal area and change color when the player has won.
-        if (hasWon) {
-            drawFilledRect(goalArea.x, goalArea.y, goalArea.width, goalArea.height, RGB5(31, 31, 31));
-        } else {
-            drawFilledRect(goalArea.x, goalArea.y, goalArea.width, goalArea.height, RGB5(31, 0, 31));
+        // Draw attack hitbox while it is active.
+        if (attackHitbox.active) {
+            drawFilledRect(attackHitbox.x, attackHitbox.y, attackHitbox.width, attackHitbox.height, RGB5(31, 31, 0));
         }
 
         // Draw the white rectangle at the updated position.
         drawPlayer(&player, rectWidth, rectHeight, RGB5(31, 31, 31));
 
-        // Save position for the next frame's erase step.
-        prevRectX = player.x;
-        prevRectY = player.y;
+        // Store current dynamic rectangles for the next frame erase/restore step.
+        prevPlayerRect.x = player.x;
+        prevPlayerRect.y = player.y;
+        prevPlayerRect.width = rectWidth;
+        prevPlayerRect.height = rectHeight;
+        prevPlayerRect.active = 1;
+
+        if (attackHitbox.active) {
+            prevAttackRect = attackHitbox;
+            prevAttackWasActive = 1;
+        } else {
+            prevAttackWasActive = 0;
+        }
     }
 
     return 0;

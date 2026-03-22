@@ -2,7 +2,7 @@
 
 # Next Action
 
-Introduce basic combat system (player attack)
+Introduce basic enemy behavior (movement or state)
 
 ## Overview
 
@@ -126,9 +126,18 @@ Validation:
 
 ## Phase 6 – Combat
 
-Status: ⬜ Not started
+Status: ⏳ In progress
 
 Tasks:
+- [x] Add one static enemy
+- [x] Add player attack input
+- [x] Add directional attack hitbox
+- [x] Detect hit between attack and enemy
+- [x] Remove enemy on hit
+- [x] Fix attack rendering trail
+- [x] Fix rendering flicker
+- [x] Restore background under dynamic elements correctly
+
 - [ ] Sword attack
 - [ ] Enemy entity
 - [ ] Damage system
@@ -195,6 +204,10 @@ Validation:
 - Designed first intuitive puzzle (unlock path via interaction)
 - Validated player understanding through level design
 
+- Implemented first combat interaction (attack → hit → enemy removal)
+- Fixed rendering artifacts in combat system
+- Stabilized incremental rendering approach
+  
 # Project Architecture
 
 ## Root
