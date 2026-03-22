@@ -2,7 +2,7 @@
 
 # Next Action
 
-Fix interaction bug when toggling obstacle over player position
+Refactor code to support scalable object management
 
 ## Overview
 
@@ -99,12 +99,18 @@ Tasks:
 - [x] Detect A button press
 - [x] Toggle object state on interaction
 - [x] Provide visible feedback through color change
-- [ ] Prevent obstacle activation if overlapping player
+- [x] Prevent obstacle activation if overlapping player
+- [x] Support multiple interactive objects
+- [x] Support multiple independent obstacles
 
 Validation:
 - [x] Interaction works only near the object
 - [x] Interaction requires button press
 - [x] Object state changes visibly
+- [x] No invalid overlap between player and obstacle
+- [x] Extended interaction system to support multiple objects
+- [x] Validated independent object-obstacle relationships
+- [x] Improved scalability of interaction logic
 
 ---
 
@@ -165,11 +171,12 @@ Validation:
 - Fixed player spawn positioning
 - Validated movement in constrained space
 
-- Implemented first interaction system with proximity trigger
-- Added object state toggle with visible feedback
-- Validated single-press interaction using A button
-
-
+- Implemented first gameplay interaction (object → world change)
+- Created basic puzzle mechanic (toggle obstacle)
+- Fixed interaction edge-case (prevent invalid overlap)
+- Extended interaction system to support multiple objects
+- Validated independent object-obstacle relationships
+- Improved scalability of interaction logic
 
 # Project Architecture
 
