@@ -23,13 +23,14 @@ typedef struct {
     Direction direction;
 } Player;
 
-// Simple rectangle type used for obstacle and collision checks.
+// Generic room/interactable object used for drawing and collision.
 typedef struct {
     int x;
     int y;
     int width;
     int height;
-} Rect;
+    int active;
+} GameObject;
 
 // Clear the full Mode 3 framebuffer to a single color.
 static void clearScreen(u16 color)
@@ -55,7 +56,7 @@ static void drawFilledRect(int x, int y, int width, int height, u16 color)
 }
 
 // Return 1 if two axis-aligned rectangles overlap, otherwise 0.
-static int isCollidingAABB(const Rect *a, const Rect *b)
+static int isCollidingAABB(const GameObject *a, const GameObject *b)
 {
     return (a->x < (b->x + b->width)) &&
            ((a->x + a->width) > b->x) &&
@@ -63,28 +64,11 @@ static int isCollidingAABB(const Rect *a, const Rect *b)
            ((a->y + a->height) > b->y);
 }
 
-// Return 1 if rect overlaps any obstacle in the list, otherwise 0.
-static int isCollidingWithAnyObstacle(const Rect *rect, const Rect *obstacles, int obstacleCount)
+// Return 1 if object overlaps any active object in the list, otherwise 0.
+static int isCollidingWithActiveObjects(const GameObject *object, const GameObject *objects, int objectCount)
 {
-    for (int i = 0; i < obstacleCount; i++) {
-        if (isCollidingAABB(rect, &obstacles[i])) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-// Return 1 if rect overlaps any currently active toggle obstacle.
-static int isCollidingWithActiveToggleObstacles(
-    const Rect *rect,
-    const Rect *toggleObstacles,
-    const int *toggleObstacleActive,
-    int toggleObstacleCount
-)
-{
-    for (int i = 0; i < toggleObstacleCount; i++) {
-        if (toggleObstacleActive[i] && isCollidingAABB(rect, &toggleObstacles[i])) {
+    for (int i = 0; i < objectCount; i++) {
+        if (objects[i].active && isCollidingAABB(object, &objects[i])) {
             return 1;
         }
     }
@@ -93,22 +77,24 @@ static int isCollidingWithActiveToggleObstacles(
 }
 
 // Return 1 if the player rectangle is within interaction range of an object.
-static int isPlayerNearObject(const Player *player, int playerWidth, int playerHeight, const Rect *object, int range)
+static int isPlayerNearObject(const Player *player, int playerWidth, int playerHeight, const GameObject *object, int range)
 {
     // Player rectangle at current position.
-    Rect playerRect = {
+    GameObject playerRect = {
         .x = player->x,
         .y = player->y,
         .width = playerWidth,
-        .height = playerHeight
+        .height = playerHeight,
+        .active = 1
     };
 
     // Expand the object rectangle to create a simple interaction zone.
-    Rect interactionZone = {
+    GameObject interactionZone = {
         .x = object->x - range,
         .y = object->y - range,
         .width = object->width + (range * 2),
-        .height = object->height + (range * 2)
+        .height = object->height + (range * 2),
+        .active = 1
     };
 
     return isCollidingAABB(&playerRect, &interactionZone);
@@ -120,10 +106,9 @@ static void updatePlayer(
     u16 keys,
     int rectWidth,
     int rectHeight,
-    const Rect *obstacles,
-    int obstacleCount,
-    const Rect *toggleObstacles,
-    const int *toggleObstacleActive,
+    const GameObject *roomObstacles,
+    int roomObstacleCount,
+    const GameObject *toggleObstacles,
     int toggleObstacleCount
 )
 {
@@ -162,21 +147,17 @@ static void updatePlayer(
         }
 
         // Test collision using new X and current Y.
-        Rect nextPlayerRectX = {
+        GameObject nextPlayerRectX = {
             .x = nextX,
             .y = player->y,
             .width = rectWidth,
-            .height = rectHeight
+            .height = rectHeight,
+            .active = 1
         };
 
-        int isBlockedX = isCollidingWithAnyObstacle(&nextPlayerRectX, obstacles, obstacleCount);
+        int isBlockedX = isCollidingWithActiveObjects(&nextPlayerRectX, roomObstacles, roomObstacleCount);
         if (!isBlockedX) {
-            isBlockedX = isCollidingWithActiveToggleObstacles(
-                &nextPlayerRectX,
-                toggleObstacles,
-                toggleObstacleActive,
-                toggleObstacleCount
-            );
+            isBlockedX = isCollidingWithActiveObjects(&nextPlayerRectX, toggleObstacles, toggleObstacleCount);
         }
 
         if (!isBlockedX) {
@@ -197,21 +178,17 @@ static void updatePlayer(
         }
 
         // Test collision using current X and new Y.
-        Rect nextPlayerRectY = {
+        GameObject nextPlayerRectY = {
             .x = player->x,
             .y = nextY,
             .width = rectWidth,
-            .height = rectHeight
+            .height = rectHeight,
+            .active = 1
         };
 
-        int isBlockedY = isCollidingWithAnyObstacle(&nextPlayerRectY, obstacles, obstacleCount);
+        int isBlockedY = isCollidingWithActiveObjects(&nextPlayerRectY, roomObstacles, roomObstacleCount);
         if (!isBlockedY) {
-            isBlockedY = isCollidingWithActiveToggleObstacles(
-                &nextPlayerRectY,
-                toggleObstacles,
-                toggleObstacleActive,
-                toggleObstacleCount
-            );
+            isBlockedY = isCollidingWithActiveObjects(&nextPlayerRectY, toggleObstacles, toggleObstacleCount);
         }
 
         if (!isBlockedY) {
@@ -240,43 +217,38 @@ int main(void)
     const int rectWidth = 12;
     const int rectHeight = 12;
 
-    // Two interactive objects; each controls its own toggle obstacle.
-    const int interactiveCount = 2;
-    const Rect specialObjects[] = {
-        { .x = 170, .y = 80, .width = 16, .height = 16 },
-        { .x = 40, .y = 100, .width = 16, .height = 16 }
+    // Two interactive objects; each controls one toggle obstacle.
+    GameObject interactiveObjects[] = {
+        { .x = 170, .y = 80, .width = 16, .height = 16, .active = 0 },
+        { .x = 40, .y = 100, .width = 16, .height = 16, .active = 0 }
     };
-    const Rect toggleObstacles[] = {
-        { .x = 150, .y = 40, .width = 24, .height = 24 },
-        { .x = 68, .y = 88, .width = 28, .height = 20 }
+    GameObject toggleObstacles[] = {
+        { .x = 150, .y = 40, .width = 24, .height = 24, .active = 0 },
+        { .x = 68, .y = 88, .width = 28, .height = 20, .active = 0 }
     };
-
-    // Per-object state: OFF = 0, ON = 1.
-    int specialObjectActive[] = { 0, 0 };
-    int toggleObstacleActive[] = { 0, 0 };
+    const int interactiveCount = sizeof(interactiveObjects) / sizeof(interactiveObjects[0]);
 
     // Distinct OFF/ON colors for each interactive object.
-    const u16 specialObjectOffColor[] = { RGB5(0, 0, 31), RGB5(0, 31, 0) };
-    const u16 specialObjectOnColor[] = { RGB5(0, 31, 31), RGB5(31, 31, 0) };
+    const u16 interactiveOffColor[] = { RGB5(0, 0, 31), RGB5(0, 31, 0) };
+    const u16 interactiveOnColor[] = { RGB5(0, 31, 31), RGB5(31, 31, 0) };
 
     // Shared interaction distance.
     const int interactionRange = 10;
 
-    // Fixed obstacle list (all drawn in red) forming a small test room.
-    const Rect obstacles[] = {
+    // Fixed room obstacles (always active).
+    GameObject roomObstacles[] = {
         // Room walls.
-        { .x = 20, .y = 20, .width = 200, .height = 8 },   // Top wall
-        { .x = 20, .y = 132, .width = 200, .height = 8 },  // Bottom wall
-        { .x = 20, .y = 20, .width = 8, .height = 120 },   // Left wall
-        { .x = 212, .y = 20, .width = 8, .height = 120 },  // Right wall
+        { .x = 20, .y = 20, .width = 200, .height = 8, .active = 1 },   // Top wall
+        { .x = 20, .y = 132, .width = 200, .height = 8, .active = 1 },  // Bottom wall
+        { .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 },   // Left wall
+        { .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 },  // Right wall
 
         // Internal block to test sliding/collision in the room.
-        { .x = 100, .y = 64, .width = 40, .height = 24 }
+        { .x = 100, .y = 64, .width = 40, .height = 24, .active = 1 }
     };
-    const int obstacleCount = sizeof(obstacles) / sizeof(obstacles[0]);
+    const int roomObstacleCount = sizeof(roomObstacles) / sizeof(roomObstacles[0]);
 
     // Create a simple player with a fixed walkable spawn and fixed speed.
-    // This spawn is inside the room and does not overlap any obstacle.
     Player player = {
         .x = 40,
         .y = 40,
@@ -290,16 +262,24 @@ int main(void)
 
     // Draw an initial frame so the rectangle is visible immediately.
     clearScreen(RGB5(0, 0, 0));
-    for (int i = 0; i < obstacleCount; i++) {
-        drawFilledRect(obstacles[i].x, obstacles[i].y, obstacles[i].width, obstacles[i].height, RGB5(31, 0, 0));
+    for (int i = 0; i < roomObstacleCount; i++) {
+        if (roomObstacles[i].active) {
+            drawFilledRect(
+                roomObstacles[i].x,
+                roomObstacles[i].y,
+                roomObstacles[i].width,
+                roomObstacles[i].height,
+                RGB5(31, 0, 0)
+            );
+        }
     }
     for (int i = 0; i < interactiveCount; i++) {
         drawFilledRect(
-            specialObjects[i].x,
-            specialObjects[i].y,
-            specialObjects[i].width,
-            specialObjects[i].height,
-            specialObjectOffColor[i]
+            interactiveObjects[i].x,
+            interactiveObjects[i].y,
+            interactiveObjects[i].width,
+            interactiveObjects[i].height,
+            interactiveOffColor[i]
         );
     }
     drawPlayer(&player, rectWidth, rectHeight, RGB5(31, 31, 31));
@@ -325,36 +305,35 @@ int main(void)
             keys,
             rectWidth,
             rectHeight,
-            obstacles,
-            obstacleCount,
+            roomObstacles,
+            roomObstacleCount,
             toggleObstacles,
-            toggleObstacleActive,
             interactiveCount
         );
 
         // 4) Handle interaction with each object independently.
         for (int i = 0; i < interactiveCount; i++) {
-            if ((keysPressed & KEY_A) && isPlayerNearObject(&player, rectWidth, rectHeight, &specialObjects[i], interactionRange)) {
-                int nextSpecialObjectState = !specialObjectActive[i];
+            if ((keysPressed & KEY_A) && isPlayerNearObject(&player, rectWidth, rectHeight, &interactiveObjects[i], interactionRange)) {
+                int nextState = !interactiveObjects[i].active;
 
-                // Only needed when changing from OFF to ON.
-                if (nextSpecialObjectState) {
-                    Rect playerRect = {
+                // Prevent activation if its obstacle would overlap the player.
+                if (nextState) {
+                    GameObject playerRect = {
                         .x = player.x,
                         .y = player.y,
                         .width = rectWidth,
-                        .height = rectHeight
+                        .height = rectHeight,
+                        .active = 1
                     };
 
-                    // Abort activation if the obstacle would overlap the player.
                     if (!isCollidingAABB(&playerRect, &toggleObstacles[i])) {
-                        specialObjectActive[i] = nextSpecialObjectState;
-                        toggleObstacleActive[i] = specialObjectActive[i];
+                        interactiveObjects[i].active = nextState;
+                        toggleObstacles[i].active = nextState;
                     }
                 } else {
                     // Turning OFF is always safe.
-                    specialObjectActive[i] = nextSpecialObjectState;
-                    toggleObstacleActive[i] = specialObjectActive[i];
+                    interactiveObjects[i].active = nextState;
+                    toggleObstacles[i].active = nextState;
                 }
             }
         }
@@ -371,20 +350,20 @@ int main(void)
             drawPlayer(&previousPlayer, rectWidth, rectHeight, RGB5(0, 0, 0));
         }
 
-        // Draw both special objects every frame so state/color changes are visible.
+        // Draw interactive objects with OFF/ON colors.
         for (int i = 0; i < interactiveCount; i++) {
             drawFilledRect(
-                specialObjects[i].x,
-                specialObjects[i].y,
-                specialObjects[i].width,
-                specialObjects[i].height,
-                specialObjectActive[i] ? specialObjectOnColor[i] : specialObjectOffColor[i]
+                interactiveObjects[i].x,
+                interactiveObjects[i].y,
+                interactiveObjects[i].width,
+                interactiveObjects[i].height,
+                interactiveObjects[i].active ? interactiveOnColor[i] : interactiveOffColor[i]
             );
         }
 
         // Draw each interaction-controlled obstacle only when active.
         for (int i = 0; i < interactiveCount; i++) {
-            if (toggleObstacleActive[i]) {
+            if (toggleObstacles[i].active) {
                 drawFilledRect(
                     toggleObstacles[i].x,
                     toggleObstacles[i].y,

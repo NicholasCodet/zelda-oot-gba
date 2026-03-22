@@ -2,7 +2,7 @@
 
 # Next Action
 
-Refactor code to support scalable object management
+Create a small puzzle goal and a simple win condition
 
 ## Overview
 
@@ -102,6 +102,7 @@ Tasks:
 - [x] Prevent obstacle activation if overlapping player
 - [x] Support multiple interactive objects
 - [x] Support multiple independent obstacles
+- [x] Refactor interaction logic using reusable object structures
 
 Validation:
 - [x] Interaction works only near the object
@@ -111,6 +112,7 @@ Validation:
 - [x] Extended interaction system to support multiple objects
 - [x] Validated independent object-obstacle relationships
 - [x] Improved scalability of interaction logic
+- [x] Refactor preserved behavior
 
 ---
 
@@ -172,11 +174,14 @@ Validation:
 - Validated movement in constrained space
 
 - Implemented first gameplay interaction (object → world change)
+- Added object state toggles with visible feedback
+- Linked interactive objects to world changes
 - Created basic puzzle mechanic (toggle obstacle)
 - Fixed interaction edge-case (prevent invalid overlap)
 - Extended interaction system to support multiple objects
 - Validated independent object-obstacle relationships
 - Improved scalability of interaction logic
+- Refactored interaction logic using reusable object structures
 
 # Project Architecture
 
