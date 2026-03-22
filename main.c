@@ -412,6 +412,7 @@ int main(void)
     int playerHealth = playerMaxHealth;
     const int playerInvulnerabilityFrames = 45;
     int playerInvulnerabilityTimer = 0;
+    int isPlayerDead = 0;
 
     // Track previous dynamic rectangles for incremental redraw.
     GameObject prevPlayerRect = {
@@ -491,17 +492,19 @@ int main(void)
             previousToggleState[i] = toggleObstacles[i].active;
         }
 
-        // 3) Update movement, bounds, and obstacle collision.
-        updatePlayer(
-            &player,
-            keys,
-            rectWidth,
-            rectHeight,
-            roomObstacles,
-            roomObstacleCount,
-            toggleObstacles,
-            interactiveCount
-        );
+        // 3) Update movement, bounds, and obstacle collision while alive.
+        if (!isPlayerDead) {
+            updatePlayer(
+                &player,
+                keys,
+                rectWidth,
+                rectHeight,
+                roomObstacles,
+                roomObstacleCount,
+                toggleObstacles,
+                interactiveCount
+            );
+        }
 
         // Move the enemy in a simple left/right patrol range while active.
         // Use next-position collision checks against active obstacles.
@@ -540,7 +543,7 @@ int main(void)
 
         // B button attack:
         // Spawn a short attack hitbox in front of the player based on direction.
-        if ((keysPressed & KEY_B) && attackTimer == 0) {
+        if (!isPlayerDead && (keysPressed & KEY_B) && attackTimer == 0) {
             attackTimer = attackDurationFrames;
             attackHasHitEnemy = 0;
             attackHitbox.active = 1;
@@ -563,7 +566,7 @@ int main(void)
         }
 
         // Keep attack active for a few frames and resolve enemy hit.
-        if (attackTimer > 0) {
+        if (!isPlayerDead && attackTimer > 0) {
             if (enemyTarget.active && attackHitbox.active && !attackHasHitEnemy &&
                 isCollidingAABB(&attackHitbox, &enemyTarget)) {
                 // One attack swing removes one enemy health point.
@@ -585,7 +588,7 @@ int main(void)
 
         // Enemy contact damage:
         // damage the player once, then wait for invulnerability frames.
-        if (enemyTarget.active && playerInvulnerabilityTimer == 0 && playerHealth > 0) {
+        if (!isPlayerDead && enemyTarget.active && playerInvulnerabilityTimer == 0 && playerHealth > 0) {
             GameObject playerRect = {
                 .x = player.x,
                 .y = player.y,
@@ -600,35 +603,45 @@ int main(void)
                     playerHealth = 0;
                 }
                 playerInvulnerabilityTimer = playerInvulnerabilityFrames;
+
+                // Enter dead state immediately when health reaches zero.
+                if (playerHealth == 0) {
+                    isPlayerDead = 1;
+                    attackTimer = 0;
+                    attackHasHitEnemy = 0;
+                    attackHitbox.active = 0;
+                }
             }
         }
 
         // 4) Handle interaction with each object independently.
-        for (int i = 0; i < interactiveCount; i++) {
-            if ((keysPressed & KEY_A) && isPlayerNearObject(&player, rectWidth, rectHeight, &interactiveObjects[i], interactionRange)) {
-                int nextState = !interactiveObjects[i].active;
+        if (!isPlayerDead) {
+            for (int i = 0; i < interactiveCount; i++) {
+                if ((keysPressed & KEY_A) && isPlayerNearObject(&player, rectWidth, rectHeight, &interactiveObjects[i], interactionRange)) {
+                    int nextState = !interactiveObjects[i].active;
 
-                // Inverted logic:
-                // object ON  -> linked obstacle OFF (path opens)
-                // object OFF -> linked obstacle ON  (path closes)
-                if (nextState) {
-                    // Activating the object removes its obstacle.
-                    interactiveObjects[i].active = 1;
-                    toggleObstacles[i].active = 0;
-                } else {
-                    // Deactivating the object restores its obstacle.
-                    // Keep the overlap guard to avoid trapping the player.
-                    GameObject playerRect = {
-                        .x = player.x,
-                        .y = player.y,
-                        .width = rectWidth,
-                        .height = rectHeight,
-                        .active = 1
-                    };
+                    // Inverted logic:
+                    // object ON  -> linked obstacle OFF (path opens)
+                    // object OFF -> linked obstacle ON  (path closes)
+                    if (nextState) {
+                        // Activating the object removes its obstacle.
+                        interactiveObjects[i].active = 1;
+                        toggleObstacles[i].active = 0;
+                    } else {
+                        // Deactivating the object restores its obstacle.
+                        // Keep the overlap guard to avoid trapping the player.
+                        GameObject playerRect = {
+                            .x = player.x,
+                            .y = player.y,
+                            .width = rectWidth,
+                            .height = rectHeight,
+                            .active = 1
+                        };
 
-                    if (!isCollidingAABB(&playerRect, &toggleObstacles[i])) {
-                        interactiveObjects[i].active = 0;
-                        toggleObstacles[i].active = 1;
+                        if (!isCollidingAABB(&playerRect, &toggleObstacles[i])) {
+                            interactiveObjects[i].active = 0;
+                            toggleObstacles[i].active = 1;
+                        }
                     }
                 }
             }
@@ -637,7 +650,7 @@ int main(void)
         // Check win condition:
         // 1) all interactive objects are active
         // 2) player rectangle overlaps the goal area
-        if (!hasWon) {
+        if (!isPlayerDead && !hasWon) {
             int allInteractionsActive = 1;
             for (int i = 0; i < interactiveCount; i++) {
                 if (!interactiveObjects[i].active) {
