@@ -2,7 +2,8 @@
 
 # Next Action
 
-Fix enemy patrol collision with room obstacles
+Fix true player dead-state, then refactor the codebase into modules
+
 ## Overview
 
 This document tracks the progress of the project.
@@ -137,7 +138,12 @@ Tasks:
 - [x] Fix rendering flicker
 - [x] Restore background under dynamic elements correctly
 - [x] Add simple enemy movement
-- [ ] Make enemy respect room obstacle collisions
+- [x] Make enemy respect room obstacle collisions
+- [x] Fix rendering issues during combat
+- [x] Add player damage on enemy contact
+- [x] Add player health system
+- [x] Add player damage feedback
+- [ ] Fix true player dead-state behavior
 
 - [ ] Sword attack
 - [ ] Enemy entity
@@ -208,6 +214,8 @@ Validation:
 - Implemented first combat interaction (attack → hit → enemy removal)
 - Fixed rendering artifacts in combat system
 - Stabilized incremental rendering approach
+- Added basic enemy health system
+- Validated multi-hit enemy defeat
   
 # Project Architecture
 

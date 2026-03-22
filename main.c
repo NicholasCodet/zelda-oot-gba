@@ -216,6 +216,28 @@ static void drawPlayer(const Player *player, int rectWidth, int rectHeight, u16 
     drawFilledRect(player->x, player->y, rectWidth, rectHeight, color);
 }
 
+// Draw a tiny health display in the top-left corner.
+// Filled segments represent remaining health.
+static void drawPlayerHealthUI(int health, int maxHealth)
+{
+    const int uiX = 4;
+    const int uiY = 4;
+    const int segmentWidth = 6;
+    const int segmentHeight = 4;
+    const int segmentGap = 2;
+
+    // Clear the full UI area each frame so removed health segments disappear.
+    int uiWidth = (maxHealth * (segmentWidth + segmentGap)) - segmentGap + 4;
+    int uiHeight = segmentHeight + 4;
+    drawFilledRect(uiX - 2, uiY - 2, uiWidth, uiHeight, RGB5(0, 0, 0));
+
+    for (int i = 0; i < maxHealth; i++) {
+        int segmentX = uiX + (i * (segmentWidth + segmentGap));
+        u16 segmentColor = (i < health) ? RGB5(0, 31, 0) : RGB5(8, 8, 8);
+        drawFilledRect(segmentX, uiY, segmentWidth, segmentHeight, segmentColor);
+    }
+}
+
 // Redraw only one region of the scene.
 // This restores background/static content underneath moving elements.
 static void redrawSceneRegion(
@@ -336,7 +358,7 @@ int main(void)
     int hasWon = 0;
 
     // Enemy target for combat testing.
-    // It patrols horizontally in a small range and disappears when hit.
+    // It patrols horizontally in a small range and uses simple health.
     GameObject enemyTarget = {
         .x = 116,
         .y = 40,
@@ -344,6 +366,8 @@ int main(void)
         .height = 14,
         .active = 1
     };
+    const int enemyMaxHealth = 2;
+    int enemyHealth = enemyMaxHealth;
     const int enemyStartX = enemyTarget.x;
     const int enemyMoveRange = 24;
     const int enemyMoveSpeed = 1;
@@ -354,6 +378,8 @@ int main(void)
     const int attackHeight = 10;
     const int attackDurationFrames = 6;
     int attackTimer = 0;
+    // Prevent multi-hit per single attack swing.
+    int attackHasHitEnemy = 0;
     GameObject attackHitbox = {
         .x = 0,
         .y = 0,
@@ -382,6 +408,10 @@ int main(void)
         .speed = 1,
         .direction = DIRECTION_DOWN
     };
+    const int playerMaxHealth = 3;
+    int playerHealth = playerMaxHealth;
+    const int playerInvulnerabilityFrames = 45;
+    int playerInvulnerabilityTimer = 0;
 
     // Track previous dynamic rectangles for incremental redraw.
     GameObject prevPlayerRect = {
@@ -447,6 +477,11 @@ int main(void)
         u16 keys = keysHeld();
         u16 keysPressed = keysDown();
 
+        // Count down temporary invulnerability after contact damage.
+        if (playerInvulnerabilityTimer > 0) {
+            playerInvulnerabilityTimer--;
+        }
+
         // Save current semi-static states so we can detect visual changes.
         int previousHasWon = hasWon;
         int previousInteractiveState[interactiveCount];
@@ -507,6 +542,7 @@ int main(void)
         // Spawn a short attack hitbox in front of the player based on direction.
         if ((keysPressed & KEY_B) && attackTimer == 0) {
             attackTimer = attackDurationFrames;
+            attackHasHitEnemy = 0;
             attackHitbox.active = 1;
             attackHitbox.width = attackWidth;
             attackHitbox.height = attackHeight;
@@ -528,13 +564,42 @@ int main(void)
 
         // Keep attack active for a few frames and resolve enemy hit.
         if (attackTimer > 0) {
-            if (enemyTarget.active && attackHitbox.active && isCollidingAABB(&attackHitbox, &enemyTarget)) {
-                enemyTarget.active = 0;
+            if (enemyTarget.active && attackHitbox.active && !attackHasHitEnemy &&
+                isCollidingAABB(&attackHitbox, &enemyTarget)) {
+                // One attack swing removes one enemy health point.
+                enemyHealth--;
+                attackHasHitEnemy = 1;
+
+                // Remove the enemy only when health reaches zero.
+                if (enemyHealth <= 0) {
+                    enemyHealth = 0;
+                    enemyTarget.active = 0;
+                }
             }
 
             attackTimer--;
             if (attackTimer == 0) {
                 attackHitbox.active = 0;
+            }
+        }
+
+        // Enemy contact damage:
+        // damage the player once, then wait for invulnerability frames.
+        if (enemyTarget.active && playerInvulnerabilityTimer == 0 && playerHealth > 0) {
+            GameObject playerRect = {
+                .x = player.x,
+                .y = player.y,
+                .width = rectWidth,
+                .height = rectHeight,
+                .active = 1
+            };
+
+            if (isCollidingAABB(&playerRect, &enemyTarget)) {
+                playerHealth--;
+                if (playerHealth < 0) {
+                    playerHealth = 0;
+                }
+                playerInvulnerabilityTimer = playerInvulnerabilityFrames;
             }
         }
 
@@ -705,8 +770,25 @@ int main(void)
             drawFilledRect(attackHitbox.x, attackHitbox.y, attackHitbox.width, attackHitbox.height, RGB5(31, 31, 0));
         }
 
-        // Draw the white rectangle at the updated position.
-        drawPlayer(&player, rectWidth, rectHeight, RGB5(31, 31, 31));
+        // Draw the player with damage feedback:
+        // flash between white and red while invulnerable.
+        if (playerHealth > 0) {
+            u16 playerColor = RGB5(31, 31, 31);
+            if (playerInvulnerabilityTimer > 0) {
+                if (((playerInvulnerabilityTimer / 4) & 1) == 0) {
+                    playerColor = RGB5(31, 0, 0);
+                }
+            }
+            drawPlayer(&player, rectWidth, rectHeight, playerColor);
+        }
+
+        // Draw player health every frame so contact damage is visible.
+        drawPlayerHealthUI(playerHealth, playerMaxHealth);
+
+        // Simple result when player health reaches zero.
+        if (playerHealth <= 0) {
+            drawFilledRect(84, 70, 72, 20, RGB5(20, 0, 0));
+        }
 
         // Store current dynamic rectangles for the next frame erase/restore step.
         prevPlayerRect.x = player.x;
