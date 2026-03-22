@@ -2,7 +2,7 @@
 
 # Next Action
 
-Add interaction system (simple trigger)
+Add a simple dialogue box or interaction feedback system
 
 ## Overview
 
@@ -91,15 +91,19 @@ Validation:
 
 ## Phase 5 – Interaction
 
-Status: ⬜ Not started
+Status: ✅ Completed
 
 Tasks:
-- [ ] Dialogue box
-- [ ] Interaction trigger
-- [ ] Basic transitions
+- [x] Add a special interactive object
+- [x] Detect player proximity to the object
+- [x] Detect A button press
+- [x] Toggle object state on interaction
+- [x] Provide visible feedback through color change
 
 Validation:
-- Player can interact with world elements
+- [x] Interaction works only near the object
+- [x] Interaction requires button press
+- [x] Object state changes visibly
 
 ---
 
@@ -159,6 +163,10 @@ Validation:
 - Built first navigable room using collision system
 - Fixed player spawn positioning
 - Validated movement in constrained space
+
+- Implemented first interaction system with proximity trigger
+- Added object state toggle with visible feedback
+- Validated single-press interaction using A button
 
 
 

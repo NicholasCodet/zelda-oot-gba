@@ -75,6 +75,28 @@ static int isCollidingWithAnyObstacle(const Rect *rect, const Rect *obstacles, i
     return 0;
 }
 
+// Return 1 if the player rectangle is within interaction range of an object.
+static int isPlayerNearObject(const Player *player, int playerWidth, int playerHeight, const Rect *object, int range)
+{
+    // Player rectangle at current position.
+    Rect playerRect = {
+        .x = player->x,
+        .y = player->y,
+        .width = playerWidth,
+        .height = playerHeight
+    };
+
+    // Expand the object rectangle to create a simple interaction zone.
+    Rect interactionZone = {
+        .x = object->x - range,
+        .y = object->y - range,
+        .width = object->width + (range * 2),
+        .height = object->height + (range * 2)
+    };
+
+    return isCollidingAABB(&playerRect, &interactionZone);
+}
+
 // Update player position from input, screen bounds, and obstacle collision.
 static void updatePlayer(Player *player, u16 keys, int rectWidth, int rectHeight, const Rect *obstacles, int obstacleCount)
 {
@@ -171,6 +193,16 @@ int main(void)
     const int rectWidth = 12;
     const int rectHeight = 12;
 
+    // Simple special object used for A-button interaction testing.
+    const Rect specialObject = {
+        .x = 170,
+        .y = 80,
+        .width = 16,
+        .height = 16
+    };
+    const int interactionRange = 10;
+    int specialObjectActive = 0;
+
     // Fixed obstacle list (all drawn in red) forming a small test room.
     const Rect obstacles[] = {
         // Room walls.
@@ -202,13 +234,15 @@ int main(void)
     for (int i = 0; i < obstacleCount; i++) {
         drawFilledRect(obstacles[i].x, obstacles[i].y, obstacles[i].width, obstacles[i].height, RGB5(31, 0, 0));
     }
+    drawFilledRect(specialObject.x, specialObject.y, specialObject.width, specialObject.height, RGB5(0, 0, 31));
     drawPlayer(&player, rectWidth, rectHeight, RGB5(31, 31, 31));
 
     // Basic game loop:
     // 1) wait for VBlank
     // 2) read input
     // 3) update/clamp position with obstacle collision
-    // 4) erase old rectangle and draw new one
+    // 4) handle interaction
+    // 5) erase old rectangle and redraw dynamic objects
     while (1) {
         // 1) Synchronize to VBlank so drawing happens between frames.
         VBlankIntrWait();
@@ -216,11 +250,17 @@ int main(void)
         // 2) Read the current input state for this frame.
         scanKeys();
         u16 keys = keysHeld();
+        u16 keysPressed = keysDown();
 
         // 3) Update movement, bounds, and obstacle collision.
         updatePlayer(&player, keys, rectWidth, rectHeight, obstacles, obstacleCount);
 
-        // 4) Erase the previous rectangle only if it moved.
+        // 4) Toggle the special object when A is pressed near it.
+        if ((keysPressed & KEY_A) && isPlayerNearObject(&player, rectWidth, rectHeight, &specialObject, interactionRange)) {
+            specialObjectActive = !specialObjectActive;
+        }
+
+        // 5) Erase the previous rectangle only if it moved.
         // This avoids full-screen redraws that cause visible flicker in Mode 3.
         if (player.x != prevRectX || player.y != prevRectY) {
             Player previousPlayer = {
@@ -230,6 +270,13 @@ int main(void)
                 .direction = player.direction
             };
             drawPlayer(&previousPlayer, rectWidth, rectHeight, RGB5(0, 0, 0));
+        }
+
+        // Draw the special object every frame so state/color changes are visible.
+        if (specialObjectActive) {
+            drawFilledRect(specialObject.x, specialObject.y, specialObject.width, specialObject.height, RGB5(0, 31, 31));
+        } else {
+            drawFilledRect(specialObject.x, specialObject.y, specialObject.width, specialObject.height, RGB5(0, 0, 31));
         }
 
         // Draw the white rectangle at the updated position.
