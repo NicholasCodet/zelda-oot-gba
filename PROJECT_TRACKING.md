@@ -2,7 +2,7 @@
 
 # Next Action
 
-Add a simple dialogue box or interaction feedback system
+Fix interaction bug when toggling obstacle over player position
 
 ## Overview
 
@@ -99,6 +99,7 @@ Tasks:
 - [x] Detect A button press
 - [x] Toggle object state on interaction
 - [x] Provide visible feedback through color change
+- [ ] Prevent obstacle activation if overlapping player
 
 Validation:
 - [x] Interaction works only near the object

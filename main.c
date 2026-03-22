@@ -98,7 +98,16 @@ static int isPlayerNearObject(const Player *player, int playerWidth, int playerH
 }
 
 // Update player position from input, screen bounds, and obstacle collision.
-static void updatePlayer(Player *player, u16 keys, int rectWidth, int rectHeight, const Rect *obstacles, int obstacleCount)
+static void updatePlayer(
+    Player *player,
+    u16 keys,
+    int rectWidth,
+    int rectHeight,
+    const Rect *obstacles,
+    int obstacleCount,
+    const Rect *toggleObstacle,
+    int toggleObstacleActive
+)
 {
     // Compute requested movement for this frame.
     int moveX = 0;
@@ -142,7 +151,12 @@ static void updatePlayer(Player *player, u16 keys, int rectWidth, int rectHeight
             .height = rectHeight
         };
 
-        if (!isCollidingWithAnyObstacle(&nextPlayerRectX, obstacles, obstacleCount)) {
+        int isBlockedX = isCollidingWithAnyObstacle(&nextPlayerRectX, obstacles, obstacleCount);
+        if (!isBlockedX && toggleObstacleActive) {
+            isBlockedX = isCollidingAABB(&nextPlayerRectX, toggleObstacle);
+        }
+
+        if (!isBlockedX) {
             player->x = nextX;
         }
     }
@@ -167,7 +181,12 @@ static void updatePlayer(Player *player, u16 keys, int rectWidth, int rectHeight
             .height = rectHeight
         };
 
-        if (!isCollidingWithAnyObstacle(&nextPlayerRectY, obstacles, obstacleCount)) {
+        int isBlockedY = isCollidingWithAnyObstacle(&nextPlayerRectY, obstacles, obstacleCount);
+        if (!isBlockedY && toggleObstacleActive) {
+            isBlockedY = isCollidingAABB(&nextPlayerRectY, toggleObstacle);
+        }
+
+        if (!isBlockedY) {
             player->y = nextY;
         }
     }
@@ -202,6 +221,15 @@ int main(void)
     };
     const int interactionRange = 10;
     int specialObjectActive = 0;
+
+    // Obstacle controlled by the special object interaction.
+    const Rect toggleObstacle = {
+        .x = 150,
+        .y = 40,
+        .width = 24,
+        .height = 24
+    };
+    int toggleObstacleActive = 0;
 
     // Fixed obstacle list (all drawn in red) forming a small test room.
     const Rect obstacles[] = {
@@ -253,11 +281,42 @@ int main(void)
         u16 keysPressed = keysDown();
 
         // 3) Update movement, bounds, and obstacle collision.
-        updatePlayer(&player, keys, rectWidth, rectHeight, obstacles, obstacleCount);
+        updatePlayer(
+            &player,
+            keys,
+            rectWidth,
+            rectHeight,
+            obstacles,
+            obstacleCount,
+            &toggleObstacle,
+            toggleObstacleActive
+        );
 
         // 4) Toggle the special object when A is pressed near it.
+        // If turning ON would place an obstacle on top of the player,
+        // cancel the toggle and keep both states unchanged.
         if ((keysPressed & KEY_A) && isPlayerNearObject(&player, rectWidth, rectHeight, &specialObject, interactionRange)) {
-            specialObjectActive = !specialObjectActive;
+            int nextSpecialObjectState = !specialObjectActive;
+
+            // Only needed when changing from OFF to ON.
+            if (nextSpecialObjectState) {
+                Rect playerRect = {
+                    .x = player.x,
+                    .y = player.y,
+                    .width = rectWidth,
+                    .height = rectHeight
+                };
+
+                // Abort activation if the obstacle would overlap the player.
+                if (!isCollidingAABB(&playerRect, &toggleObstacle)) {
+                    specialObjectActive = nextSpecialObjectState;
+                    toggleObstacleActive = specialObjectActive;
+                }
+            } else {
+                // Turning OFF is always safe.
+                specialObjectActive = nextSpecialObjectState;
+                toggleObstacleActive = specialObjectActive;
+            }
         }
 
         // 5) Erase the previous rectangle only if it moved.
@@ -277,6 +336,13 @@ int main(void)
             drawFilledRect(specialObject.x, specialObject.y, specialObject.width, specialObject.height, RGB5(0, 31, 31));
         } else {
             drawFilledRect(specialObject.x, specialObject.y, specialObject.width, specialObject.height, RGB5(0, 0, 31));
+        }
+
+        // Draw the interaction-controlled obstacle only when active.
+        if (toggleObstacleActive) {
+            drawFilledRect(toggleObstacle.x, toggleObstacle.y, toggleObstacle.width, toggleObstacle.height, RGB5(31, 0, 0));
+        } else {
+            drawFilledRect(toggleObstacle.x, toggleObstacle.y, toggleObstacle.width, toggleObstacle.height, RGB5(0, 0, 0));
         }
 
         // Draw the white rectangle at the updated position.
