@@ -24,10 +24,10 @@ int main(void)
     initWorld(&world);
 
     Player player;
-    initPlayer(&player, 40, 40, 1, 3, 45);
+    initPlayer(&player, 36, 72, 1, 3, 45);
 
     Enemy enemy;
-    initEnemy(&enemy, 116, 40, 14, 14, 2, 24, 1);
+    initEnemy(&enemy, 86, 112, 14, 14, 2, 28, 1);
 
     Attack attack;
     initAttack(&attack, 10, 10, 6);

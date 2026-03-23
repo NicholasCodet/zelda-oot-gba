@@ -2,7 +2,7 @@
 
 # Next Action
 
-Validate modular refactor and confirm all gameplay systems still work
+Improve playable slice readability and validate level flow
 
 ## Overview
 
@@ -126,7 +126,7 @@ Validation:
 
 ## Phase 6 – Combat
 
-Status: ⏳ In progress
+Status: ✅ Completed
 
 Tasks:
 - [x] Add one static enemy
@@ -143,21 +143,30 @@ Tasks:
 - [x] Add player damage on enemy contact
 - [x] Add player health system
 - [x] Add player damage feedback
-- [ ] Fix true player dead-state behavior
-
-- [ ] Sword attack
-- [ ] Enemy entity
-- [ ] Damage system
-- [ ] Health system
+- [x] Fix true player dead-state behavior
+- [x] Player knockback on hit
+- [x] Stable combat rendering
 
 Validation:
-- Combat loop works
+- [x] Player can attack in the current facing direction
+- [x] Enemy takes damage and dies after multiple hits
+- [x] Enemy contact damages the player
+- [x] Player invulnerability prevents repeated instant damage
+- [x] Knockback makes enemy contact readable
+- [x] Combat rendering remains stable without flicker or trails
 
 ---
 
 ## Phase 7 – First Playable Slice
 
-Status: ⬜ Not started
+Status: ⏳ In progress
+
+Tasks:
+- [x] Rework room layout into a coherent playable slice
+- [x] Include movement, collision, interaction, combat, and goal
+- [x] Improve basic visual readability (shapes, outlines)
+- [ ] Validate clarity of progression and challenge
+
 
 Goal:
 Create a small playable area inspired by Kokiri Forest.
@@ -218,6 +227,9 @@ Validation:
 - Validated multi-hit enemy defeat
 - Refactored codebase from single-file prototype to modular C structure
 - Preserved gameplay behavior during architectural cleanup
+- Completed first playable combat loop
+- Added enemy damage, player damage, invulnerability, and knockback
+- Reached Zelda-like combat feel prototype
   
 # Project Architecture
 
