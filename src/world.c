@@ -3,36 +3,91 @@
 #include "world.h"
 #include "player.h"
 
-void initWorld(World *world)
+static void loadRoom0(World *world)
 {
-    // Two switches in the left chamber.
-    // Both start OFF, and each controls one linked gate column.
+    // Room 1: starter puzzle room with two linked gate columns.
     world->interactiveObjects[0] = (GameObject){ .x = 34, .y = 34, .width = 16, .height = 16, .active = 0 };
     world->interactiveObjects[1] = (GameObject){ .x = 60, .y = 104, .width = 16, .height = 16, .active = 0 };
 
-    // Two full-height gate columns.
-    // Both must be disabled to open a path into the goal chamber.
     world->toggleObstacles[0] = (GameObject){ .x = 156, .y = 28, .width = 12, .height = 104, .active = 1 };
     world->toggleObstacles[1] = (GameObject){ .x = 168, .y = 28, .width = 12, .height = 104, .active = 1 };
 
-    // Room bounds plus one central block to create top/bottom lanes.
     world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 200, .height = 8, .active = 1 };
     world->roomObstacles[1] = (GameObject){ .x = 20, .y = 132, .width = 200, .height = 8, .active = 1 };
     world->roomObstacles[2] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };
     world->roomObstacles[3] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };
     world->roomObstacles[4] = (GameObject){ .x = 96, .y = 52, .width = 28, .height = 56, .active = 1 };
 
-    // Goal in the right chamber behind the linked gate columns.
     world->goalArea = (GameObject){ .x = 190, .y = 66, .width = 18, .height = 18, .active = 1 };
 
+    world->playerSpawnX = 36;
+    world->playerSpawnY = 72;
+    world->enemySpawnX = 86;
+    world->enemySpawnY = 112;
+    world->enemyMoveRange = 28;
+}
+
+static void loadRoom1(World *world)
+{
+    // Room 2: alternate layout with a left-side block and mid-room gate barrier.
+    world->interactiveObjects[0] = (GameObject){ .x = 34, .y = 56, .width = 16, .height = 16, .active = 0 };
+    world->interactiveObjects[1] = (GameObject){ .x = 88, .y = 108, .width = 16, .height = 16, .active = 0 };
+
+    world->toggleObstacles[0] = (GameObject){ .x = 116, .y = 28, .width = 12, .height = 104, .active = 1 };
+    world->toggleObstacles[1] = (GameObject){ .x = 128, .y = 28, .width = 12, .height = 104, .active = 1 };
+
+    world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 200, .height = 8, .active = 1 };
+    world->roomObstacles[1] = (GameObject){ .x = 20, .y = 132, .width = 200, .height = 8, .active = 1 };
+    world->roomObstacles[2] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };
+    world->roomObstacles[3] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };
+    world->roomObstacles[4] = (GameObject){ .x = 52, .y = 44, .width = 36, .height = 72, .active = 1 };
+
+    world->goalArea = (GameObject){ .x = 186, .y = 102, .width = 18, .height = 18, .active = 1 };
+
+    world->playerSpawnX = 34;
+    world->playerSpawnY = 34;
+    world->enemySpawnX = 98;
+    world->enemySpawnY = 84;
+    world->enemyMoveRange = 8;
+}
+
+void initWorld(World *world)
+{
     world->interactiveOffColor[0] = RGB5(0, 0, 31);
     world->interactiveOffColor[1] = RGB5(0, 31, 0);
     world->interactiveOnColor[0] = RGB5(0, 31, 31);
     world->interactiveOnColor[1] = RGB5(31, 31, 0);
 
+    world->roomCount = WORLD_ROOM_COUNT;
     world->interactiveCount = WORLD_INTERACTIVE_COUNT;
     world->roomObstacleCount = WORLD_ROOM_OBSTACLE_COUNT;
     world->interactionRange = 10;
+    world->currentRoomIndex = 0;
+    world->hasWon = 0;
+
+    loadWorldRoom(world, 0);
+}
+
+void loadWorldRoom(World *world, int roomIndex)
+{
+    if (world->roomCount <= 0) {
+        world->roomCount = WORLD_ROOM_COUNT;
+    }
+
+    // Keep room index wrapped to the available room count.
+    if (roomIndex < 0 || roomIndex >= world->roomCount) {
+        roomIndex = 0;
+    }
+
+    world->currentRoomIndex = roomIndex;
+
+    if (roomIndex == 0) {
+        loadRoom0(world);
+    } else {
+        loadRoom1(world);
+    }
+
+    // Every new room starts in a non-win state.
     world->hasWon = 0;
 }
 

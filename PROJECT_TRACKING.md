@@ -2,8 +2,7 @@
 
 # Next Action
 
-Improve playable slice readability and validate level flow
-
+Fix HUD rendering instability in the health display
 ## Overview
 
 This document tracks the progress of the project.
@@ -159,13 +158,22 @@ Validation:
 
 ## Phase 7 – First Playable Slice
 
-Status: ⏳ In progress
+Status: ✅ Completed
 
 Tasks:
 - [x] Rework room layout into a coherent playable slice
 - [x] Include movement, collision, interaction, combat, and goal
-- [x] Improve basic visual readability (shapes, outlines)
-- [ ] Validate clarity of progression and challenge
+- [x] Improve gameplay readability (color differentiation)
+- [x] Improve gameplay readability (shape differentiation)
+- [x] Refine visual balance of obstacles
+- [x] Validate clarity of progression and challenge
+
+Validation:
+- [x] Player can understand the goal without explanation
+- [x] Interactive objects are identifiable
+- [x] Obstacles and their effects are readable
+- [x] Enemy is clearly identifiable as a threat
+- [x] Gameplay loop is understandable and playable
 
 
 Goal:
@@ -227,6 +235,7 @@ Validation:
 - Validated multi-hit enemy defeat
 - Refactored codebase from single-file prototype to modular C structure
 - Preserved gameplay behavior during architectural cleanup
+
 - Completed first playable combat loop
 - Added enemy damage, player damage, invulnerability, and knockback
 - Reached Zelda-like combat feel prototype

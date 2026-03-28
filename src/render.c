@@ -7,22 +7,21 @@
 
 // Shared colors used to improve scene readability.
 #define COLOR_BG RGB5(0, 0, 0)
-#define COLOR_ROOM_OBSTACLE RGB5(10, 8, 8)
-#define COLOR_ROOM_OBSTACLE_BORDER RGB5(16, 13, 13)
-#define COLOR_TOGGLE_OBSTACLE RGB5(26, 4, 4)
-#define COLOR_TOGGLE_OBSTACLE_BORDER RGB5(31, 18, 0)
-#define COLOR_GOAL RGB5(8, 0, 25)
+#define COLOR_ROOM_OBSTACLE RGB5(8, 8, 10)
+#define COLOR_ROOM_OBSTACLE_BORDER RGB5(14, 14, 16)
+#define COLOR_TOGGLE_OBSTACLE RGB5(13, 11, 9)
+#define COLOR_TOGGLE_OBSTACLE_BORDER RGB5(20, 18, 14)
+#define COLOR_GOAL RGB5(0, 20, 28)
 #define COLOR_GOAL_BORDER RGB5(31, 31, 31)
-#define COLOR_GOAL_CORE RGB5(18, 8, 31)
-#define COLOR_GOAL_WIN RGB5(0, 24, 0)
-#define COLOR_GOAL_WIN_CORE RGB5(8, 31, 8)
+#define COLOR_GOAL_WIN RGB5(0, 28, 10)
 #define COLOR_ENEMY RGB5(31, 3, 3)
 #define COLOR_ENEMY_BORDER RGB5(31, 28, 0)
 #define COLOR_ENEMY_CORE RGB5(20, 0, 0)
 #define COLOR_ENEMY_EYE RGB5(31, 31, 0)
 #define COLOR_SWITCH_BORDER RGB5(31, 31, 31)
 #define COLOR_SWITCH_CORE_ON RGB5(31, 31, 31)
-#define COLOR_SWITCH_CORE_OFF RGB5(8, 8, 8)
+#define COLOR_SWITCH_CORE_OFF RGB5(6, 6, 6)
+#define GOAL_VISUAL_PADDING 3
 
 // Draw a filled rectangle in Mode 3.
 static void drawFilledRect(int x, int y, int width, int height, u16 color)
@@ -74,6 +73,20 @@ static void drawOutlinedRect(int x, int y, int width, int height, u16 fillColor,
     drawFilledRect(x + width - 1, y, 1, height, borderColor);
 }
 
+// Goal is drawn larger than its collision box to improve readability.
+static GameObject getGoalVisualRect(const World *world)
+{
+    GameObject visualRect = {
+        .x = world->goalArea.x - GOAL_VISUAL_PADDING,
+        .y = world->goalArea.y - GOAL_VISUAL_PADDING,
+        .width = world->goalArea.width + (GOAL_VISUAL_PADDING * 2),
+        .height = world->goalArea.height + (GOAL_VISUAL_PADDING * 2),
+        .active = world->goalArea.active
+    };
+
+    return visualRect;
+}
+
 // Room walls are neutral so they do not compete with gameplay objects.
 static void drawRoomObstacle(const GameObject *obstacle)
 {
@@ -111,53 +124,68 @@ static void drawToggleObstacle(const GameObject *obstacle)
 
 static void drawInteractiveObject(const World *world, int index)
 {
-    u16 fillColor = world->interactiveObjects[index].active
+    u16 borderColor = world->interactiveObjects[index].active
         ? world->interactiveOnColor[index]
         : world->interactiveOffColor[index];
+    u16 coreColor = world->interactiveObjects[index].active ? COLOR_SWITCH_CORE_ON : COLOR_SWITCH_CORE_OFF;
 
+    // Hollow double outline gives triggers a clear shape distinct from obstacles.
     drawOutlinedRect(
         world->interactiveObjects[index].x,
         world->interactiveObjects[index].y,
         world->interactiveObjects[index].width,
         world->interactiveObjects[index].height,
-        fillColor,
-        COLOR_SWITCH_BORDER
+        COLOR_BG,
+        borderColor
     );
 
-    // Draw a small center core so switches look intentionally interactive.
-    {
-        int coreWidth = world->interactiveObjects[index].width / 2;
-        int coreHeight = world->interactiveObjects[index].height / 2;
-        int coreX = world->interactiveObjects[index].x + (world->interactiveObjects[index].width - coreWidth) / 2;
-        int coreY = world->interactiveObjects[index].y + (world->interactiveObjects[index].height - coreHeight) / 2;
-        u16 coreColor = world->interactiveObjects[index].active ? COLOR_SWITCH_CORE_ON : COLOR_SWITCH_CORE_OFF;
-        drawFilledRect(coreX, coreY, coreWidth, coreHeight, coreColor);
+    if (world->interactiveObjects[index].width >= 8 && world->interactiveObjects[index].height >= 8) {
+        drawOutlinedRect(
+            world->interactiveObjects[index].x + 2,
+            world->interactiveObjects[index].y + 2,
+            world->interactiveObjects[index].width - 4,
+            world->interactiveObjects[index].height - 4,
+            COLOR_BG,
+            COLOR_SWITCH_BORDER
+        );
     }
+
+    // ON/OFF state remains visible via center brightness.
+    drawFilledRect(
+        world->interactiveObjects[index].x + (world->interactiveObjects[index].width / 2) - 2,
+        world->interactiveObjects[index].y + (world->interactiveObjects[index].height / 2) - 2,
+        4,
+        4,
+        coreColor
+    );
 }
 
 static void drawGoalArea(const World *world)
 {
+    GameObject goalVisualRect = getGoalVisualRect(world);
     u16 goalColor = world->hasWon ? COLOR_GOAL_WIN : COLOR_GOAL;
-    u16 goalCoreColor = world->hasWon ? COLOR_GOAL_WIN_CORE : COLOR_GOAL_CORE;
+
+    // Solid larger platform so the goal is easy to identify from far away.
+    drawFilledRect(
+        goalVisualRect.x,
+        goalVisualRect.y,
+        goalVisualRect.width,
+        goalVisualRect.height,
+        goalColor
+    );
 
     drawOutlinedRect(
-        world->goalArea.x,
-        world->goalArea.y,
-        world->goalArea.width,
-        world->goalArea.height,
+        goalVisualRect.x,
+        goalVisualRect.y,
+        goalVisualRect.width,
+        goalVisualRect.height,
         goalColor,
         COLOR_GOAL_BORDER
     );
 
-    // Inner core makes the goal read as a unique "destination" marker.
-    drawOutlinedRect(
-        world->goalArea.x + 4,
-        world->goalArea.y + 4,
-        world->goalArea.width - 8,
-        world->goalArea.height - 8,
-        goalCoreColor,
-        COLOR_GOAL_BORDER
-    );
+    // Simple cross mark makes the goal shape recognizable without color.
+    drawFilledRect(goalVisualRect.x + (goalVisualRect.width / 2) - 1, goalVisualRect.y + 2, 2, goalVisualRect.height - 4, COLOR_GOAL_BORDER);
+    drawFilledRect(goalVisualRect.x + 2, goalVisualRect.y + (goalVisualRect.height / 2) - 1, goalVisualRect.width - 4, 2, COLOR_GOAL_BORDER);
 }
 
 static void drawEnemyRect(const Enemy *enemy)
@@ -227,7 +255,8 @@ static void redrawSceneRegion(const GameObject *region, const World *world, cons
         }
     }
 
-    if (world->goalArea.active && isCollidingAABB(region, &world->goalArea)) {
+    GameObject goalVisualRect = getGoalVisualRect(world);
+    if (world->goalArea.active && isCollidingAABB(region, &goalVisualRect)) {
         drawGoalArea(world);
     }
 
@@ -350,7 +379,8 @@ void renderFrame(
     }
 
     if (state->prevHasWon != world->hasWon) {
-        redrawSceneRegion(&world->goalArea, world, enemy);
+        GameObject goalVisualRect = getGoalVisualRect(world);
+        redrawSceneRegion(&goalVisualRect, world, enemy);
     }
 
     drawDynamicObjects(player, enemy, attack, playerWidth, playerHeight);

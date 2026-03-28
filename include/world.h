@@ -5,6 +5,7 @@
 
 #define WORLD_INTERACTIVE_COUNT 2
 #define WORLD_ROOM_OBSTACLE_COUNT 5
+#define WORLD_ROOM_COUNT 2
 
 // Generic rectangle/object used for world layout and collision.
 typedef struct {
@@ -31,9 +32,21 @@ typedef struct {
     int roomObstacleCount;
     int interactionRange;
     int hasWon;
+
+    // Simple room-state tracking for room transitions.
+    int currentRoomIndex;
+    int roomCount;
+
+    // Spawn data for the current room.
+    int playerSpawnX;
+    int playerSpawnY;
+    int enemySpawnX;
+    int enemySpawnY;
+    int enemyMoveRange;
 } World;
 
 void initWorld(World *world);
+void loadWorldRoom(World *world, int roomIndex);
 
 int isCollidingAABB(const GameObject *a, const GameObject *b);
 int isCollidingWithActiveObjects(const GameObject *object, const GameObject *objects, int objectCount);
