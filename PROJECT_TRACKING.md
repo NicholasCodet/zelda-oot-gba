@@ -3,6 +3,7 @@
 # Next Action
 
 Fix HUD rendering instability in the health display
+
 ## Overview
 
 This document tracks the progress of the project.
@@ -175,6 +176,56 @@ Validation:
 - [x] Enemy is clearly identifiable as a threat
 - [x] Gameplay loop is understandable and playable
 
+---
+
+## Phase 8 – Rendering Architecture Upgrade
+
+Status: ✅ Completed
+
+Tasks:
+- [x] Add room transition system
+- [x] Add a second room
+- [x] Fix HUD rendering instability
+- [x] Validate room-to-room gameplay flow
+
+Validation:
+- [x] Player can reach the next room
+- [x] HUD remains stable during gameplay and transitions
+- [x] Room transitions feel reliable
+
+---
+
+## Phase 9 – Multi-Room Progression
+
+Status: ⬜ Not started
+
+Tasks: 
+
+Validation:
+
+---
+
+## Phase 10 – Combat Refinement
+
+
+Status: ⬜ Not started
+
+Tasks: 
+
+Validation:
+
+---
+
+## Phase 11 – Core Polish Preparation
+
+
+Status: ⬜ Not started
+
+Tasks: 
+
+Validation:
+
+---
 
 Goal:
 Create a small playable area inspired by Kokiri Forest.
@@ -239,6 +290,10 @@ Validation:
 - Completed first playable combat loop
 - Added enemy damage, player damage, invulnerability, and knockback
 - Reached Zelda-like combat feel prototype
+
+- Added room transition system
+- Added a second playable room
+- Extended the prototype beyond the initial roadmap
   
 # Project Architecture
 

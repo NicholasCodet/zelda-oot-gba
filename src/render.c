@@ -1,9 +1,20 @@
 #include <gba_video.h>
+#include <gba_sprites.h>
 
 #include "render.h"
 
 #define SCREEN_WIDTH 240
 #define SCREEN_HEIGHT 160
+#define HUD_X 4
+#define HUD_Y 4
+#define HUD_SEGMENT_WIDTH 6
+#define HUD_SEGMENT_HEIGHT 4
+#define HUD_SEGMENT_GAP 2
+#define HUD_AREA_HEIGHT 14
+#define PLAYER_SPRITE_OAM_INDEX 0
+#define PLAYER_SPRITE_TILE_BASE 512
+#define PLAYER_SPRITE_TILE_WHITE (PLAYER_SPRITE_TILE_BASE + 0)
+#define PLAYER_SPRITE_TILE_RED (PLAYER_SPRITE_TILE_BASE + 4)
 
 // Shared colors used to improve scene readability.
 #define COLOR_BG RGB5(0, 0, 0)
@@ -23,8 +34,102 @@
 #define COLOR_SWITCH_CORE_OFF RGB5(6, 6, 6)
 #define GOAL_VISUAL_PADDING 3
 
-// Draw a filled rectangle in Mode 3.
-static void drawFilledRect(int x, int y, int width, int height, u16 color)
+// Player sprite setup state.
+static int gPlayerSpriteReady = 0;
+
+// Set one pixel inside a 16x16 4bpp sprite tile set (2x2 tiles).
+static void setPlayerSpritePixel(u32 *tileWords, int x, int y, u32 paletteIndex)
+{
+    int tileIndex = (y / 8) * 2 + (x / 8);
+    int localX = x & 7;
+    int localY = y & 7;
+    u32 *word = &tileWords[(tileIndex * 8) + localY];
+    u32 shift = (u32)(localX * 4);
+
+    *word = (*word & ~(0xFu << shift)) | ((paletteIndex & 0xF) << shift);
+}
+
+// Build one 16x16 sprite variant for the player (top-left aligned 12x12 block).
+static void buildPlayerSpriteTiles(u32 *tileWords, u32 paletteIndex)
+{
+    for (int i = 0; i < 32; i++) {
+        tileWords[i] = 0;
+    }
+
+    for (int y = 0; y < 12; y++) {
+        for (int x = 0; x < 12; x++) {
+            setPlayerSpritePixel(tileWords, x, y, paletteIndex);
+        }
+    }
+}
+
+// Upload player sprite graphics and configure one OAM entry.
+static void initPlayerSprite(void)
+{
+    if (gPlayerSpriteReady) {
+        return;
+    }
+
+    u32 whiteTiles[32];
+    u32 redTiles[32];
+    volatile u32 *objTileMemory = (volatile u32 *)BITMAP_OBJ_BASE_ADR;
+
+    buildPlayerSpriteTiles(whiteTiles, 1);
+    buildPlayerSpriteTiles(redTiles, 2);
+
+    for (int i = 0; i < 32; i++) {
+        objTileMemory[i] = whiteTiles[i];
+        objTileMemory[32 + i] = redTiles[i];
+    }
+
+    // Sprite palette:
+    // 0 = transparent, 1 = player normal, 2 = player damage flash.
+    SPRITE_PALETTE[0] = RGB5(0, 0, 0);
+    SPRITE_PALETTE[1] = RGB5(31, 31, 31);
+    SPRITE_PALETTE[2] = RGB5(31, 0, 0);
+
+    // Hide all sprite entries by default for a known starting state.
+    for (int i = 0; i < 128; i++) {
+        OAM[i].attr0 = ATTR0_DISABLED;
+        OAM[i].attr1 = 0;
+        OAM[i].attr2 = 0;
+    }
+
+    gPlayerSpriteReady = 1;
+}
+
+// Update player sprite position/visibility each frame.
+static void updatePlayerSprite(const Player *player)
+{
+    if (!gPlayerSpriteReady) {
+        return;
+    }
+
+    // Keep existing death behavior: hide player when dead.
+    if (player->health <= 0 || player->isDead) {
+        OAM[PLAYER_SPRITE_OAM_INDEX].attr0 = ATTR0_DISABLED;
+        OAM[PLAYER_SPRITE_OAM_INDEX].attr1 = 0;
+        OAM[PLAYER_SPRITE_OAM_INDEX].attr2 = 0;
+        return;
+    }
+
+    u16 tileIndex = PLAYER_SPRITE_TILE_WHITE;
+
+    // Keep invulnerability flash feedback by switching sprite graphics.
+    if (player->invulnerabilityTimer > 0) {
+        if (((player->invulnerabilityTimer / 4) & 1) == 0) {
+            tileIndex = PLAYER_SPRITE_TILE_RED;
+        }
+    }
+
+    OAM[PLAYER_SPRITE_OAM_INDEX].attr0 = OBJ_Y(player->y) | ATTR0_COLOR_16 | ATTR0_SQUARE;
+    OAM[PLAYER_SPRITE_OAM_INDEX].attr1 = OBJ_X(player->x) | ATTR1_SIZE_16;
+    OAM[PLAYER_SPRITE_OAM_INDEX].attr2 = OBJ_CHAR(tileIndex) | ATTR2_PRIORITY(0) | ATTR2_PALETTE(0);
+}
+
+// Draw a filled rectangle in Mode 3 with a top clip.
+// `minY` lets us reserve the HUD band and keep world rendering below it.
+static void drawFilledRectClipped(int x, int y, int width, int height, u16 color, int minY)
 {
     volatile u16 *videoBuffer = (volatile u16 *)MODE3_FB;
 
@@ -37,8 +142,8 @@ static void drawFilledRect(int x, int y, int width, int height, u16 color)
     if (startX < 0) {
         startX = 0;
     }
-    if (startY < 0) {
-        startY = 0;
+    if (startY < minY) {
+        startY = minY;
     }
     if (endX > SCREEN_WIDTH) {
         endX = SCREEN_WIDTH;
@@ -58,19 +163,31 @@ static void drawFilledRect(int x, int y, int width, int height, u16 color)
     }
 }
 
+// Generic fill (no HUD clipping).
+static void drawFilledRect(int x, int y, int width, int height, u16 color)
+{
+    drawFilledRectClipped(x, y, width, height, color, 0);
+}
+
+// Playfield fill: never draw inside the reserved HUD area.
+static void drawPlayfieldRect(int x, int y, int width, int height, u16 color)
+{
+    drawFilledRectClipped(x, y, width, height, color, HUD_AREA_HEIGHT);
+}
+
 // Draw a simple 1-pixel border around a filled rectangle.
 static void drawOutlinedRect(int x, int y, int width, int height, u16 fillColor, u16 borderColor)
 {
-    drawFilledRect(x, y, width, height, fillColor);
+    drawPlayfieldRect(x, y, width, height, fillColor);
 
     if (width <= 1 || height <= 1) {
         return;
     }
 
-    drawFilledRect(x, y, width, 1, borderColor);
-    drawFilledRect(x, y + height - 1, width, 1, borderColor);
-    drawFilledRect(x, y, 1, height, borderColor);
-    drawFilledRect(x + width - 1, y, 1, height, borderColor);
+    drawPlayfieldRect(x, y, width, 1, borderColor);
+    drawPlayfieldRect(x, y + height - 1, width, 1, borderColor);
+    drawPlayfieldRect(x, y, 1, height, borderColor);
+    drawPlayfieldRect(x + width - 1, y, 1, height, borderColor);
 }
 
 // Goal is drawn larger than its collision box to improve readability.
@@ -166,7 +283,7 @@ static void drawGoalArea(const World *world)
     u16 goalColor = world->hasWon ? COLOR_GOAL_WIN : COLOR_GOAL;
 
     // Solid larger platform so the goal is easy to identify from far away.
-    drawFilledRect(
+    drawPlayfieldRect(
         goalVisualRect.x,
         goalVisualRect.y,
         goalVisualRect.width,
@@ -184,8 +301,8 @@ static void drawGoalArea(const World *world)
     );
 
     // Simple cross mark makes the goal shape recognizable without color.
-    drawFilledRect(goalVisualRect.x + (goalVisualRect.width / 2) - 1, goalVisualRect.y + 2, 2, goalVisualRect.height - 4, COLOR_GOAL_BORDER);
-    drawFilledRect(goalVisualRect.x + 2, goalVisualRect.y + (goalVisualRect.height / 2) - 1, goalVisualRect.width - 4, 2, COLOR_GOAL_BORDER);
+    drawPlayfieldRect(goalVisualRect.x + (goalVisualRect.width / 2) - 1, goalVisualRect.y + 2, 2, goalVisualRect.height - 4, COLOR_GOAL_BORDER);
+    drawPlayfieldRect(goalVisualRect.x + 2, goalVisualRect.y + (goalVisualRect.height / 2) - 1, goalVisualRect.width - 4, 2, COLOR_GOAL_BORDER);
 }
 
 static void drawEnemyRect(const Enemy *enemy)
@@ -207,35 +324,23 @@ static void drawEnemyRect(const Enemy *enemy)
     }
 }
 
-static void drawPlayerRect(const Player *player, int rectWidth, int rectHeight, u16 color)
-{
-    drawFilledRect(player->x, player->y, rectWidth, rectHeight, color);
-}
-
 // Draw a tiny health display in the top-left corner.
 static void drawPlayerHealthUI(int health, int maxHealth)
 {
-    const int uiX = 4;
-    const int uiY = 4;
-    const int segmentWidth = 6;
-    const int segmentHeight = 4;
-    const int segmentGap = 2;
-
-    int uiWidth = (maxHealth * (segmentWidth + segmentGap)) - segmentGap + 4;
-    int uiHeight = segmentHeight + 4;
-    drawFilledRect(uiX - 2, uiY - 2, uiWidth, uiHeight, RGB5(0, 0, 0));
+    // Clear the full reserved HUD strip every frame for a clean overlay.
+    drawFilledRect(0, 0, SCREEN_WIDTH, HUD_AREA_HEIGHT, COLOR_BG);
 
     for (int i = 0; i < maxHealth; i++) {
-        int segmentX = uiX + (i * (segmentWidth + segmentGap));
+        int segmentX = HUD_X + (i * (HUD_SEGMENT_WIDTH + HUD_SEGMENT_GAP));
         u16 segmentColor = (i < health) ? RGB5(0, 31, 0) : RGB5(8, 8, 8);
-        drawFilledRect(segmentX, uiY, segmentWidth, segmentHeight, segmentColor);
+        drawFilledRect(segmentX, HUD_Y, HUD_SEGMENT_WIDTH, HUD_SEGMENT_HEIGHT, segmentColor);
     }
 }
 
 // Redraw only one region of the scene.
 static void redrawSceneRegion(const GameObject *region, const World *world, const Enemy *enemy)
 {
-    drawFilledRect(region->x, region->y, region->width, region->height, COLOR_BG);
+    drawPlayfieldRect(region->x, region->y, region->width, region->height, COLOR_BG);
 
     for (int i = 0; i < world->roomObstacleCount; i++) {
         if (world->roomObstacles[i].active && isCollidingAABB(region, &world->roomObstacles[i])) {
@@ -271,9 +376,7 @@ static void redrawSceneRegion(const GameObject *region, const World *world, cons
 static void drawDynamicObjects(
     const Player *player,
     const Enemy *enemy,
-    const Attack *attack,
-    int playerWidth,
-    int playerHeight
+    const Attack *attack
 )
 {
     if (enemy->active) {
@@ -281,23 +384,8 @@ static void drawDynamicObjects(
     }
 
     if (attack->active) {
-        drawFilledRect(attack->x, attack->y, attack->width, attack->height, RGB5(31, 31, 0));
+        drawPlayfieldRect(attack->x, attack->y, attack->width, attack->height, RGB5(31, 31, 0));
     }
-
-    if (player->health > 0) {
-        u16 playerColor = RGB5(31, 31, 31);
-
-        // Flash red while temporary invulnerability is active.
-        if (player->invulnerabilityTimer > 0) {
-            if (((player->invulnerabilityTimer / 4) & 1) == 0) {
-                playerColor = RGB5(31, 0, 0);
-            }
-        }
-
-        drawPlayerRect(player, playerWidth, playerHeight, playerColor);
-    }
-
-    drawPlayerHealthUI(player->health, player->maxHealth);
 
     // Keep the existing simple death indicator.
     if (player->health <= 0) {
@@ -315,6 +403,9 @@ void initRenderState(
     int playerHeight
 )
 {
+    initPlayerSprite();
+    updatePlayerSprite(player);
+
     state->prevPlayerRect = getPlayerRect(player, playerWidth, playerHeight);
     state->prevAttackRect = getAttackRect(attack);
     state->prevAttackWasActive = attack->active;
@@ -337,6 +428,9 @@ void drawInitialFrame(
     int playerHeight
 )
 {
+    (void)playerWidth;
+    (void)playerHeight;
+
     GameObject fullScreenRegion = {
         .x = 0,
         .y = 0,
@@ -345,8 +439,10 @@ void drawInitialFrame(
         .active = 1
     };
 
+    // Draw HUD first so top scanlines are updated early.
+    drawPlayerHealthUI(player->health, player->maxHealth);
     redrawSceneRegion(&fullScreenRegion, world, enemy);
-    drawDynamicObjects(player, enemy, attack, playerWidth, playerHeight);
+    drawDynamicObjects(player, enemy, attack);
 }
 
 void renderFrame(
@@ -359,6 +455,13 @@ void renderFrame(
     RenderState *state
 )
 {
+    // Update player sprite first each frame (separate from bitmap redraw path).
+    updatePlayerSprite(player);
+
+    // Draw HUD first in the frame.
+    // In Mode 3, scanout starts at the top, so early HUD updates reduce top-line artifacts.
+    drawPlayerHealthUI(player->health, player->maxHealth);
+
     redrawSceneRegion(&state->prevPlayerRect, world, enemy);
 
     if (state->prevAttackWasActive) {
@@ -383,7 +486,7 @@ void renderFrame(
         redrawSceneRegion(&goalVisualRect, world, enemy);
     }
 
-    drawDynamicObjects(player, enemy, attack, playerWidth, playerHeight);
+    drawDynamicObjects(player, enemy, attack);
 
     state->prevPlayerRect = getPlayerRect(player, playerWidth, playerHeight);
 

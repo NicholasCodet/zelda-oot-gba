@@ -14,8 +14,8 @@ int main(void)
     irqInit();
     irqEnable(IRQ_VBLANK);
 
-    // Keep Mode 3 bitmap rendering with BG2 enabled.
-    REG_DISPCNT = MODE_3 | BG2_ON;
+    // Keep Mode 3 bitmap rendering for rooms, and enable OBJ for player sprite.
+    REG_DISPCNT = MODE_3 | BG2_ON | OBJ_ON | OBJ_1D_MAP;
 
     const int playerWidth = 12;
     const int playerHeight = 12;
