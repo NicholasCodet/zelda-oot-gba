@@ -21,7 +21,6 @@ int main(void)
     const int playerHeight = 12;
     const int enemyWidth = 14;
     const int enemyHeight = 14;
-    const int enemyMaxHealth = 2;
     const int enemyMoveSpeed = 1;
     const int attackWidth = 10;
     const int attackHeight = 10;
@@ -40,9 +39,10 @@ int main(void)
         world.enemySpawnY,
         enemyWidth,
         enemyHeight,
-        enemyMaxHealth,
+        world.enemyMaxHealth,
         world.enemyMoveRange,
-        enemyMoveSpeed
+        enemyMoveSpeed,
+        world.enemyMoveAxis
     );
 
     Attack attack;
@@ -51,6 +51,8 @@ int main(void)
     RenderState renderState;
     initRenderState(&renderState, &world, &player, &enemy, &attack, playerWidth, playerHeight);
     drawInitialFrame(&world, &player, &enemy, &attack, playerWidth, playerHeight);
+    // Initial full scene draw already happened, so no extra full redraw is needed.
+    world.requestFullPlayfieldRedraw = 0;
 
     while (1) {
         VBlankIntrWait();
@@ -109,15 +111,18 @@ int main(void)
                 world.enemySpawnY,
                 enemyWidth,
                 enemyHeight,
-                enemyMaxHealth,
+                world.enemyMaxHealth,
                 world.enemyMoveRange,
-                enemyMoveSpeed
+                enemyMoveSpeed,
+                world.enemyMoveAxis
             );
             initAttack(&attack, attackWidth, attackHeight, attackDuration);
 
             // Reinitialize render cache and redraw full scene after room swap.
             initRenderState(&renderState, &world, &player, &enemy, &attack, playerWidth, playerHeight);
             drawInitialFrame(&world, &player, &enemy, &attack, playerWidth, playerHeight);
+            // Prevent a second full-playfield redraw on the next frame.
+            world.requestFullPlayfieldRedraw = 0;
             continue;
         }
 

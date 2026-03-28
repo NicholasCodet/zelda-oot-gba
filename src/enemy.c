@@ -8,7 +8,8 @@ void initEnemy(
     int height,
     int maxHealth,
     int moveRange,
-    int moveSpeed
+    int moveSpeed,
+    EnemyMoveAxis moveAxis
 )
 {
     enemy->x = startX;
@@ -21,9 +22,11 @@ void initEnemy(
     enemy->health = maxHealth;
 
     enemy->startX = startX;
+    enemy->startY = startY;
     enemy->moveRange = moveRange;
     enemy->moveSpeed = moveSpeed;
     enemy->moveDirection = 1;
+    enemy->moveAxis = moveAxis;
 }
 
 GameObject getEnemyRect(const Enemy *enemy)
@@ -51,20 +54,34 @@ void updateEnemyMovement(
         return;
     }
 
-    int nextX = enemy->x + (enemy->moveDirection * enemy->moveSpeed);
-    int minX = enemy->startX - enemy->moveRange;
-    int maxX = enemy->startX + enemy->moveRange;
+    int nextX = enemy->x;
+    int nextY = enemy->y;
 
-    // Reverse at patrol bounds and skip this movement step.
-    if (nextX < minX || nextX > maxX) {
-        enemy->moveDirection = -enemy->moveDirection;
-        return;
+    // Compute next position and patrol bounds on the configured axis.
+    if (enemy->moveAxis == ENEMY_MOVE_AXIS_Y) {
+        nextY = enemy->y + (enemy->moveDirection * enemy->moveSpeed);
+
+        int minY = enemy->startY - enemy->moveRange;
+        int maxY = enemy->startY + enemy->moveRange;
+        if (nextY < minY || nextY > maxY) {
+            enemy->moveDirection = -enemy->moveDirection;
+            return;
+        }
+    } else {
+        nextX = enemy->x + (enemy->moveDirection * enemy->moveSpeed);
+
+        int minX = enemy->startX - enemy->moveRange;
+        int maxX = enemy->startX + enemy->moveRange;
+        if (nextX < minX || nextX > maxX) {
+            enemy->moveDirection = -enemy->moveDirection;
+            return;
+        }
     }
 
     // Test the enemy's next rectangle against active room and toggle obstacles.
     GameObject nextEnemyRect = {
         .x = nextX,
-        .y = enemy->y,
+        .y = nextY,
         .width = enemy->width,
         .height = enemy->height,
         .active = 1
@@ -79,7 +96,8 @@ void updateEnemyMovement(
         // Do not enter obstacles; reverse direction for the next frame.
         enemy->moveDirection = -enemy->moveDirection;
     } else {
-        // Free path: apply the movement.
+        // Free path: apply the movement along the configured axis.
         enemy->x = nextX;
+        enemy->y = nextY;
     }
 }

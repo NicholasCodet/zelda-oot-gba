@@ -11,6 +11,8 @@
 #define HUD_SEGMENT_HEIGHT 4
 #define HUD_SEGMENT_GAP 2
 #define HUD_AREA_HEIGHT 14
+#define PLAYFIELD_TOP HUD_AREA_HEIGHT
+#define PLAYFIELD_HEIGHT (SCREEN_HEIGHT - PLAYFIELD_TOP)
 #define PLAYER_SPRITE_OAM_INDEX 0
 #define PLAYER_SPRITE_TILE_BASE 512
 #define PLAYER_SPRITE_TILE_WHITE (PLAYER_SPRITE_TILE_BASE + 0)
@@ -172,7 +174,7 @@ static void drawFilledRect(int x, int y, int width, int height, u16 color)
 // Playfield fill: never draw inside the reserved HUD area.
 static void drawPlayfieldRect(int x, int y, int width, int height, u16 color)
 {
-    drawFilledRectClipped(x, y, width, height, color, HUD_AREA_HEIGHT);
+    drawFilledRectClipped(x, y, width, height, color, PLAYFIELD_TOP);
 }
 
 // Draw a simple 1-pixel border around a filled rectangle.
@@ -431,22 +433,22 @@ void drawInitialFrame(
     (void)playerWidth;
     (void)playerHeight;
 
-    GameObject fullScreenRegion = {
+    GameObject fullPlayfieldRegion = {
         .x = 0,
-        .y = 0,
+        .y = PLAYFIELD_TOP,
         .width = SCREEN_WIDTH,
-        .height = SCREEN_HEIGHT,
+        .height = PLAYFIELD_HEIGHT,
         .active = 1
     };
 
     // Draw HUD first so top scanlines are updated early.
     drawPlayerHealthUI(player->health, player->maxHealth);
-    redrawSceneRegion(&fullScreenRegion, world, enemy);
+    redrawSceneRegion(&fullPlayfieldRegion, world, enemy);
     drawDynamicObjects(player, enemy, attack);
 }
 
 void renderFrame(
-    const World *world,
+    World *world,
     const Player *player,
     const Enemy *enemy,
     const Attack *attack,
@@ -462,28 +464,44 @@ void renderFrame(
     // In Mode 3, scanout starts at the top, so early HUD updates reduce top-line artifacts.
     drawPlayerHealthUI(player->health, player->maxHealth);
 
-    redrawSceneRegion(&state->prevPlayerRect, world, enemy);
+    if (world->requestFullPlayfieldRedraw) {
+        // World state changed (switch/obstacle/goal/etc): redraw the full
+        // playfield once to avoid dirty-rect edge cases and partial artifacts.
+        GameObject fullPlayfieldRegion = {
+            .x = 0,
+            .y = PLAYFIELD_TOP,
+            .width = SCREEN_WIDTH,
+            .height = PLAYFIELD_HEIGHT,
+            .active = 1
+        };
 
-    if (state->prevAttackWasActive) {
-        redrawSceneRegion(&state->prevAttackRect, world, enemy);
-    }
+        redrawSceneRegion(&fullPlayfieldRegion, world, enemy);
+        world->requestFullPlayfieldRedraw = 0;
+    } else {
+        // Normal frame path: use incremental redraw for previous dynamic regions.
+        redrawSceneRegion(&state->prevPlayerRect, world, enemy);
 
-    if (state->prevEnemyWasActive) {
-        redrawSceneRegion(&state->prevEnemyRect, world, enemy);
-    }
-
-    for (int i = 0; i < world->interactiveCount; i++) {
-        if (state->prevInteractiveState[i] != world->interactiveObjects[i].active) {
-            redrawSceneRegion(&world->interactiveObjects[i], world, enemy);
+        if (state->prevAttackWasActive) {
+            redrawSceneRegion(&state->prevAttackRect, world, enemy);
         }
-        if (state->prevToggleState[i] != world->toggleObstacles[i].active) {
-            redrawSceneRegion(&world->toggleObstacles[i], world, enemy);
-        }
-    }
 
-    if (state->prevHasWon != world->hasWon) {
-        GameObject goalVisualRect = getGoalVisualRect(world);
-        redrawSceneRegion(&goalVisualRect, world, enemy);
+        if (state->prevEnemyWasActive) {
+            redrawSceneRegion(&state->prevEnemyRect, world, enemy);
+        }
+
+        for (int i = 0; i < world->interactiveCount; i++) {
+            if (state->prevInteractiveState[i] != world->interactiveObjects[i].active) {
+                redrawSceneRegion(&world->interactiveObjects[i], world, enemy);
+            }
+            if (state->prevToggleState[i] != world->toggleObstacles[i].active) {
+                redrawSceneRegion(&world->toggleObstacles[i], world, enemy);
+            }
+        }
+
+        if (state->prevHasWon != world->hasWon) {
+            GameObject goalVisualRect = getGoalVisualRect(world);
+            redrawSceneRegion(&goalVisualRect, world, enemy);
+        }
     }
 
     drawDynamicObjects(player, enemy, attack);

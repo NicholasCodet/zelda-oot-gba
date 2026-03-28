@@ -2,6 +2,7 @@
 
 #include "world.h"
 #include "player.h"
+#include "enemy.h"
 
 static void loadRoom0(World *world)
 {
@@ -24,7 +25,9 @@ static void loadRoom0(World *world)
     world->playerSpawnY = 72;
     world->enemySpawnX = 86;
     world->enemySpawnY = 112;
+    world->enemyMaxHealth = 2;
     world->enemyMoveRange = 28;
+    world->enemyMoveAxis = ENEMY_MOVE_AXIS_X;
 }
 
 static void loadRoom1(World *world)
@@ -48,31 +51,73 @@ static void loadRoom1(World *world)
     world->playerSpawnY = 34;
     world->enemySpawnX = 98;
     world->enemySpawnY = 84;
+    world->enemyMaxHealth = 2;
     world->enemyMoveRange = 8;
+    world->enemyMoveAxis = ENEMY_MOVE_AXIS_X;
 }
 
 static void loadRoom2(World *world)
 {
-    // Room 3: split-lane room with one switch per lane and right-side lane gates.
-    world->interactiveObjects[0] = (GameObject){ .x = 36, .y = 34, .width = 16, .height = 16, .active = 0 };
+    // Room 3: two-stage spatial puzzle.
+    // 1) Lower gate opens first to reach the second switch.
+    // 2) Upper gate then opens to physically access the goal chamber.
+    world->interactiveObjects[0] = (GameObject){ .x = 172, .y = 104, .width = 16, .height = 16, .active = 0 };
     world->interactiveObjects[1] = (GameObject){ .x = 36, .y = 104, .width = 16, .height = 16, .active = 0 };
 
-    world->toggleObstacles[0] = (GameObject){ .x = 150, .y = 28, .width = 12, .height = 40, .active = 1 };
-    world->toggleObstacles[1] = (GameObject){ .x = 150, .y = 84, .width = 12, .height = 40, .active = 1 };
+    // Upper and lower passage gates on the center split.
+    world->toggleObstacles[0] = (GameObject){ .x = 120, .y = 28, .width = 12, .height = 44, .active = 1 };
+    world->toggleObstacles[1] = (GameObject){ .x = 120, .y = 88, .width = 12, .height = 36, .active = 1 };
 
     world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 200, .height = 8, .active = 1 };
     world->roomObstacles[1] = (GameObject){ .x = 20, .y = 132, .width = 200, .height = 8, .active = 1 };
     world->roomObstacles[2] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };
     world->roomObstacles[3] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };
-    world->roomObstacles[4] = (GameObject){ .x = 90, .y = 62, .width = 40, .height = 36, .active = 1 };
 
-    world->goalArea = (GameObject){ .x = 186, .y = 34, .width = 18, .height = 18, .active = 1 };
+    // Divider blocks climbing from right-lower to right-upper without opening upper gate.
+    world->roomObstacles[4] = (GameObject){ .x = 132, .y = 72, .width = 80, .height = 12, .active = 1 };
+
+    world->goalArea = (GameObject){ .x = 186, .y = 36, .width = 18, .height = 18, .active = 1 };
 
     world->playerSpawnX = 34;
-    world->playerSpawnY = 72;
-    world->enemySpawnX = 108;
-    world->enemySpawnY = 108;
-    world->enemyMoveRange = 22;
+    world->playerSpawnY = 96;
+    world->enemySpawnX = 72;
+    world->enemySpawnY = 36;
+    world->enemyMaxHealth = 2;
+    world->enemyMoveRange = 20;
+    world->enemyMoveAxis = ENEMY_MOVE_AXIS_X;
+}
+
+static void loadRoom3(World *world)
+{
+    // Room 4: gated right-side challenge room.
+    // Sequence:
+    // 1) Activate switch 0 to open the center gate into the enemy zone.
+    // 2) Reach switch 1 on the right side to open the goal chamber gate.
+    world->interactiveObjects[0] = (GameObject){ .x = 36, .y = 104, .width = 16, .height = 16, .active = 0 };
+    world->interactiveObjects[1] = (GameObject){ .x = 166, .y = 102, .width = 16, .height = 16, .active = 0 };
+
+    // Gate 0 blocks left-to-right traversal until switch 0 is activated.
+    world->toggleObstacles[0] = (GameObject){ .x = 104, .y = 28, .width = 12, .height = 104, .active = 1 };
+    // Gate 1 closes the top-right goal chamber entrance until switch 1 is activated.
+    world->toggleObstacles[1] = (GameObject){ .x = 140, .y = 28, .width = 12, .height = 36, .active = 1 };
+
+    world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 200, .height = 8, .active = 1 };
+    world->roomObstacles[1] = (GameObject){ .x = 20, .y = 132, .width = 200, .height = 8, .active = 1 };
+    world->roomObstacles[2] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };
+    world->roomObstacles[3] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };
+    // Bottom wall of the goal chamber: keeps it physically gated until gate 1 opens.
+    world->roomObstacles[4] = (GameObject){ .x = 140, .y = 64, .width = 72, .height = 12, .active = 1 };
+
+    world->goalArea = (GameObject){ .x = 184, .y = 36, .width = 18, .height = 18, .active = 1 };
+
+    world->playerSpawnX = 34;
+    world->playerSpawnY = 92;
+    // Variation: this room uses a vertical patrol enemy with higher health.
+    world->enemySpawnX = 152;
+    world->enemySpawnY = 100;
+    world->enemyMaxHealth = 3;
+    world->enemyMoveRange = 18;
+    world->enemyMoveAxis = ENEMY_MOVE_AXIS_Y;
 }
 
 void initWorld(World *world)
@@ -88,6 +133,7 @@ void initWorld(World *world)
     world->interactionRange = 10;
     world->currentRoomIndex = 0;
     world->hasWon = 0;
+    world->requestFullPlayfieldRedraw = 1;
 
     loadWorldRoom(world, 0);
 }
@@ -109,12 +155,16 @@ void loadWorldRoom(World *world, int roomIndex)
         loadRoom0(world);
     } else if (roomIndex == 1) {
         loadRoom1(world);
-    } else {
+    } else if (roomIndex == 2) {
         loadRoom2(world);
+    } else {
+        loadRoom3(world);
     }
 
     // Every new room starts in a non-win state.
     world->hasWon = 0;
+    // Force a full playfield redraw after room/world state replacement.
+    world->requestFullPlayfieldRedraw = 1;
 }
 
 int isCollidingAABB(const GameObject *a, const GameObject *b)

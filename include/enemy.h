@@ -3,6 +3,12 @@
 
 #include "world.h"
 
+// Simple patrol axis variants for enemy movement.
+typedef enum {
+    ENEMY_MOVE_AXIS_X = 0,
+    ENEMY_MOVE_AXIS_Y = 1
+} EnemyMoveAxis;
+
 // Enemy gameplay state.
 typedef struct {
     int x;
@@ -15,9 +21,11 @@ typedef struct {
     int health;
 
     int startX;
+    int startY;
     int moveRange;
     int moveSpeed;
-    int moveDirection; // 1 = right, -1 = left
+    int moveDirection; // 1 = positive axis direction, -1 = negative
+    EnemyMoveAxis moveAxis;
 } Enemy;
 
 void initEnemy(
@@ -28,7 +36,8 @@ void initEnemy(
     int height,
     int maxHealth,
     int moveRange,
-    int moveSpeed
+    int moveSpeed,
+    EnemyMoveAxis moveAxis
 );
 
 GameObject getEnemyRect(const Enemy *enemy);

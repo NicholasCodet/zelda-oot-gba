@@ -197,15 +197,20 @@ Validation:
 
 ## Phase 9 – Room Expansion
 
-Status: ⏳ In progress
+Status: ✅ Completed
 
 Tasks: 
 - [x] Add a third room
-- [ ] Ensure the new room creates a meaningful gameplay variation
-- [ ] Ensure puzzle progression is spatially necessary
-- [ ] Validate room identity and gameplay flow
+- [x] Redesign the third room so the puzzle is spatially necessary
+- [x] Add a fourth room with meaningful gameplay variation
+- [x] Fix global blink on interaction, goal validation, and room transitions
+- [x] Validate multi-room gameplay flow
+- [x] Validate final visual stability across all rooms
 
 Validation:
+- [x] Room 3 & 4 provides a meaningful gameplay variation
+- [x] World state changes no longer cause visible blinking
+- [x] Multi-room flow feels visually stable
 
 ---
 
@@ -302,6 +307,10 @@ Validation:
 - Stabilized HUD rendering in Mode 3
 - Resolved rendering artifacts affecting player and UI
 - Validated multi-room gameplay loop
+
+- Added a fourth room with stronger gameplay variation
+- Removed global screen blink during world state changes
+- Validated stable multi-room gameplay progression
   
 # Project Architecture
 
@@ -371,3 +380,10 @@ Always provide context to AI tools:
 
 Avoid large prompts.  
 Prefer small, focused tasks.
+
+## Known Issues
+
+- Room 3 still has a localized rendering artifact when the player stands on a trigger:
+  a rectangle may appear over the enemy.
+- Minor rendering artifacts can appear when the player attack overlaps a wall.
+- These issues are currently deferred because they do not block gameplay progression.

@@ -40,7 +40,7 @@ void drawInitialFrame(
 );
 
 void renderFrame(
-    const World *world,
+    World *world,
     const Player *player,
     const Enemy *enemy,
     const Attack *attack,
