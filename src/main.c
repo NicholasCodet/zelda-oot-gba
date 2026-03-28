@@ -88,16 +88,46 @@ int main(void)
         updateWorldInteractions(&world, &player, keysPressed, playerWidth, playerHeight);
         updateWorldWinState(&world, &player, playerWidth, playerHeight);
 
-        if (world.hasWon) {
-            int nextRoomIndex = world.currentRoomIndex + 1;
-            if (nextRoomIndex >= world.roomCount) {
-                nextRoomIndex = 0;
+        int shouldTransitionRoom = 0;
+        int transitionRoomIndex = 0;
+        int transitionSpawnX = 0;
+        int transitionSpawnY = 0;
+        int useDoorSpawn = 0;
+
+        // Door zones provide spatial transitions between connected rooms.
+        if (checkDoorZoneTransition(
+                &world,
+                &player,
+                playerWidth,
+                playerHeight,
+                &transitionRoomIndex,
+                &transitionSpawnX,
+                &transitionSpawnY
+            )) {
+            shouldTransitionRoom = 1;
+            useDoorSpawn = 1;
+        } else if (world.hasWon && world.currentRoomIndex != 1) {
+            // Keep existing goal-based progression transitions.
+            transitionRoomIndex = world.currentRoomIndex + 1;
+            if (transitionRoomIndex >= world.roomCount) {
+                transitionRoomIndex = 0;
+            }
+            shouldTransitionRoom = 1;
+        }
+
+        if (shouldTransitionRoom) {
+            // Load target room, then place player either at the door target
+            // spawn or at the room's default spawn for goal transitions.
+            loadWorldRoom(&world, transitionRoomIndex);
+
+            if (useDoorSpawn) {
+                player.x = transitionSpawnX;
+                player.y = transitionSpawnY;
+            } else {
+                player.x = world.playerSpawnX;
+                player.y = world.playerSpawnY;
             }
 
-            // Load the next room and reset player position to that room's spawn.
-            loadWorldRoom(&world, nextRoomIndex);
-            player.x = world.playerSpawnX;
-            player.y = world.playerSpawnY;
             player.direction = DIRECTION_DOWN;
             player.invulnerabilityTimer = 0;
             player.knockbackX = 0;

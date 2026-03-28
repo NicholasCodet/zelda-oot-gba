@@ -4,7 +4,8 @@
 #include <gba_types.h>
 
 #define WORLD_INTERACTIVE_COUNT 2
-#define WORLD_ROOM_OBSTACLE_COUNT 5
+#define WORLD_ROOM_OBSTACLE_COUNT 7
+#define WORLD_DOOR_COUNT 2
 #define WORLD_ROOM_COUNT 4
 
 // Generic rectangle/object used for world layout and collision.
@@ -18,18 +19,29 @@ typedef struct {
 
 struct Player;
 
+// Simple instant room transition zone.
+typedef struct {
+    GameObject zone;
+    int targetRoomIndex;
+    int targetSpawnX;
+    int targetSpawnY;
+    int active;
+} DoorZone;
+
 // All simple world state used by this project.
 typedef struct {
     GameObject interactiveObjects[WORLD_INTERACTIVE_COUNT];
     GameObject toggleObstacles[WORLD_INTERACTIVE_COUNT];
     GameObject roomObstacles[WORLD_ROOM_OBSTACLE_COUNT];
     GameObject goalArea;
+    DoorZone doorZones[WORLD_DOOR_COUNT];
 
     u16 interactiveOffColor[WORLD_INTERACTIVE_COUNT];
     u16 interactiveOnColor[WORLD_INTERACTIVE_COUNT];
 
     int interactiveCount;
     int roomObstacleCount;
+    int doorCount;
     int interactionRange;
     int hasWon;
     // Set by world update code when environment state changes and a full
@@ -77,6 +89,16 @@ void updateWorldWinState(
     const struct Player *player,
     int playerWidth,
     int playerHeight
+);
+
+int checkDoorZoneTransition(
+    const World *world,
+    const struct Player *player,
+    int playerWidth,
+    int playerHeight,
+    int *targetRoomIndex,
+    int *targetSpawnX,
+    int *targetSpawnY
 );
 
 #endif

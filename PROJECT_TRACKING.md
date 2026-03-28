@@ -206,22 +206,36 @@ Tasks:
 - [x] Fix global blink on interaction, goal validation, and room transitions
 - [x] Validate multi-room gameplay flow
 - [x] Validate final visual stability across all rooms
+- [ ] Clarify transition types between rooms
+- [ ] Use spatial passage only where it improves exploration feel
+- [ ] Keep teleporter transitions explicit and intentional
+- [ ] Remove Room 2 teleporter and make Room 2 -> Room 3 a true spatial passage
+- [ ] Make Room 2 <-> Room 3 bidirectional through matching openings
+- [ ] Clarify transition identity of each room
 
 Validation:
 - [x] Room 3 & 4 provides a meaningful gameplay variation
 - [x] World state changes no longer cause visible blinking
 - [x] Multi-room flow feels visually stable
+- [ ] Each room has a clear transition identity
+- [ ] Room-to-room flow feels understandable
 
 ---
 
 ## Phase 10 – Combat Refinement
 
+Status: ⏳ In progress
 
-Status: ⬜ Not started
-
-Tasks: 
+Tasks:
+- [x] Add a second enemy behavior variation
+- [ ] Integrate enemy variations into different rooms
+- [ ] Balance combat difficulty across rooms
+- [ ] Improve gameplay progression using combat + puzzle combinations
 
 Validation:
+- [ ] Different rooms create different combat situations
+- [ ] Enemy variations impact player behavior
+- [ ] Difficulty increases progressively across rooms
 
 ---
 
