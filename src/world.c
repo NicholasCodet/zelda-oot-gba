@@ -51,6 +51,30 @@ static void loadRoom1(World *world)
     world->enemyMoveRange = 8;
 }
 
+static void loadRoom2(World *world)
+{
+    // Room 3: split-lane room with one switch per lane and right-side lane gates.
+    world->interactiveObjects[0] = (GameObject){ .x = 36, .y = 34, .width = 16, .height = 16, .active = 0 };
+    world->interactiveObjects[1] = (GameObject){ .x = 36, .y = 104, .width = 16, .height = 16, .active = 0 };
+
+    world->toggleObstacles[0] = (GameObject){ .x = 150, .y = 28, .width = 12, .height = 40, .active = 1 };
+    world->toggleObstacles[1] = (GameObject){ .x = 150, .y = 84, .width = 12, .height = 40, .active = 1 };
+
+    world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 200, .height = 8, .active = 1 };
+    world->roomObstacles[1] = (GameObject){ .x = 20, .y = 132, .width = 200, .height = 8, .active = 1 };
+    world->roomObstacles[2] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };
+    world->roomObstacles[3] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };
+    world->roomObstacles[4] = (GameObject){ .x = 90, .y = 62, .width = 40, .height = 36, .active = 1 };
+
+    world->goalArea = (GameObject){ .x = 186, .y = 34, .width = 18, .height = 18, .active = 1 };
+
+    world->playerSpawnX = 34;
+    world->playerSpawnY = 72;
+    world->enemySpawnX = 108;
+    world->enemySpawnY = 108;
+    world->enemyMoveRange = 22;
+}
+
 void initWorld(World *world)
 {
     world->interactiveOffColor[0] = RGB5(0, 0, 31);
@@ -83,8 +107,10 @@ void loadWorldRoom(World *world, int roomIndex)
 
     if (roomIndex == 0) {
         loadRoom0(world);
-    } else {
+    } else if (roomIndex == 1) {
         loadRoom1(world);
+    } else {
+        loadRoom2(world);
     }
 
     // Every new room starts in a non-win state.

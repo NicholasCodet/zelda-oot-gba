@@ -2,7 +2,7 @@
 
 # Next Action
 
-Fix HUD rendering instability in the health display
+Redesign the latest room so the puzzle is enforced by level geometry
 
 ## Overview
 
@@ -195,11 +195,15 @@ Validation:
 
 ---
 
-## Phase 9 – Multi-Room Progression
+## Phase 9 – Room Expansion
 
-Status: ⬜ Not started
+Status: ⏳ In progress
 
 Tasks: 
+- [x] Add a third room
+- [ ] Ensure the new room creates a meaningful gameplay variation
+- [ ] Ensure puzzle progression is spatially necessary
+- [ ] Validate room identity and gameplay flow
 
 Validation:
 
@@ -294,6 +298,10 @@ Validation:
 - Added room transition system
 - Added a second playable room
 - Extended the prototype beyond the initial roadmap
+
+- Stabilized HUD rendering in Mode 3
+- Resolved rendering artifacts affecting player and UI
+- Validated multi-room gameplay loop
   
 # Project Architecture
 

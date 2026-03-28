@@ -5,7 +5,7 @@
 
 #define WORLD_INTERACTIVE_COUNT 2
 #define WORLD_ROOM_OBSTACLE_COUNT 5
-#define WORLD_ROOM_COUNT 2
+#define WORLD_ROOM_COUNT 3
 
 // Generic rectangle/object used for world layout and collision.
 typedef struct {
