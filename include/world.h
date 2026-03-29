@@ -5,6 +5,7 @@
 
 #define WORLD_INTERACTIVE_COUNT 2
 #define WORLD_ROOM_OBSTACLE_COUNT 7
+#define WORLD_LOCKED_DOOR_COUNT 2
 #define WORLD_DOOR_COUNT 2
 #define WORLD_ROOM_COUNT 5
 
@@ -34,7 +35,7 @@ typedef struct {
     int interactiveActive[WORLD_INTERACTIVE_COUNT];
     int toggleObstacleActive[WORLD_INTERACTIVE_COUNT];
     int keyActive;
-    int lockedDoorActive;
+    int lockedDoorActive[WORLD_LOCKED_DOOR_COUNT];
 } RoomPersistentState;
 
 // All simple world state used by this project.
@@ -43,7 +44,7 @@ typedef struct {
     GameObject toggleObstacles[WORLD_INTERACTIVE_COUNT];
     GameObject roomObstacles[WORLD_ROOM_OBSTACLE_COUNT];
     GameObject keyObject;
-    GameObject lockedDoor;
+    GameObject lockedDoors[WORLD_LOCKED_DOOR_COUNT];
     GameObject goalArea;
     DoorZone doorZones[WORLD_DOOR_COUNT];
 
@@ -54,7 +55,8 @@ typedef struct {
     int roomObstacleCount;
     int doorCount;
     int interactionRange;
-    int hasKey;
+    int lockedDoorCount;
+    int keyCount;
     int hasWon;
     // Debug-oriented: number of invalid layout placements detected
     // when the current room was initialized.

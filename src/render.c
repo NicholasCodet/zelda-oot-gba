@@ -414,8 +414,8 @@ static void drawEnemyRect(const Enemy *enemy)
     }
 }
 
-// Draw a tiny health display in the top-left corner.
-static void drawPlayerHealthUI(int health, int maxHealth)
+// Draw a tiny HUD strip with health and key count in the top-left area.
+static void drawPlayerHealthUI(int health, int maxHealth, int keyCount)
 {
     // Clear the full reserved HUD strip every frame for a clean overlay.
     drawFilledRect(0, 0, SCREEN_WIDTH, HUD_AREA_HEIGHT, COLOR_BG);
@@ -424,6 +424,22 @@ static void drawPlayerHealthUI(int health, int maxHealth)
         int segmentX = HUD_X + (i * (HUD_SEGMENT_WIDTH + HUD_SEGMENT_GAP));
         u16 segmentColor = (i < health) ? RGB5(0, 31, 0) : RGB5(8, 8, 8);
         drawFilledRect(segmentX, HUD_Y, HUD_SEGMENT_WIDTH, HUD_SEGMENT_HEIGHT, segmentColor);
+    }
+
+    // Draw simple yellow key squares near the right side of the HUD.
+    // Limit the drawn amount to keep the HUD compact and stable.
+    int clampedKeyCount = keyCount;
+    if (clampedKeyCount > 8) {
+        clampedKeyCount = 8;
+    }
+
+    for (int i = 0; i < clampedKeyCount; i++) {
+        int keyX = 186 + (i * 6);
+        drawFilledRect(keyX, HUD_Y, 4, 4, COLOR_KEY);
+        drawFilledRect(keyX, HUD_Y, 4, 1, COLOR_KEY_BORDER);
+        drawFilledRect(keyX, HUD_Y + 3, 4, 1, COLOR_KEY_BORDER);
+        drawFilledRect(keyX, HUD_Y, 1, 4, COLOR_KEY_BORDER);
+        drawFilledRect(keyX + 3, HUD_Y, 1, 4, COLOR_KEY_BORDER);
     }
 }
 
@@ -455,8 +471,10 @@ static void redrawSceneRegion(const GameObject *region, const World *world, cons
         drawGoalArea(world);
     }
 
-    if (world->lockedDoor.active && isCollidingAABB(region, &world->lockedDoor)) {
-        drawLockedDoorObject(&world->lockedDoor);
+    for (int i = 0; i < world->lockedDoorCount; i++) {
+        if (world->lockedDoors[i].active && isCollidingAABB(region, &world->lockedDoors[i])) {
+            drawLockedDoorObject(&world->lockedDoors[i]);
+        }
     }
 
     if (world->keyObject.active && isCollidingAABB(region, &world->keyObject)) {
@@ -538,7 +556,7 @@ void drawInitialFrame(
     };
 
     // Draw HUD first so top scanlines are updated early.
-    drawPlayerHealthUI(player->health, player->maxHealth);
+    drawPlayerHealthUI(player->health, player->maxHealth, world->keyCount);
     redrawSceneRegion(&fullPlayfieldRegion, world, enemy);
     drawDynamicObjects(player, enemy, attack);
 }
@@ -558,7 +576,7 @@ void renderFrame(
 
     // Draw HUD first in the frame.
     // In Mode 3, scanout starts at the top, so early HUD updates reduce top-line artifacts.
-    drawPlayerHealthUI(player->health, player->maxHealth);
+    drawPlayerHealthUI(player->health, player->maxHealth, world->keyCount);
 
     if (world->requestFullPlayfieldRedraw) {
         // World state changed (switch/obstacle/goal/etc): redraw the full

@@ -2,7 +2,8 @@
 
 # Next Action
 
-Add a simple key and locked door mechanic
+Improve player guidance through room layout
+
 ## Overview
 
 This document tracks the progress of the project.
@@ -252,14 +253,16 @@ Status: ⏳ In progress
 
 Tasks: 
 - [x] Add a simple key and locked door mechanic
-- [ ] Improve clarity of objectives through visual feedback
-- [ ] Ensure important interactive elements are visually distinct
+- [x] Improve clarity of objectives through visual feedback
+- [x] Ensure important interactive elements are visually distinct
+- [x] Place key in a risky situation
 - [ ] Improve consistency of player understanding (what to do / where to go)
 - [ ] Refine game loop clarity (start → play → win/lose → restart)
 
 Validation:
-- [ ] Player can understand objectives without explanation
-- [ ] Key gameplay elements (key, door, goal, trigger) are clearly identifiable
+- [x] Player can understand objectives without explanation
+- [x] Key gameplay elements (key, door, goal, trigger) are clearly identifiable
+- [x] Gameplay includes simple risk/reward situations
 - [ ] Game progression feels natural and understandable
 - [ ] Game loop is clear and complete
 
@@ -343,6 +346,15 @@ Validation:
 - Fixed invalid initial room placements
 - Added room layout validation safeguards
 - Stabilized multi-room progression and room flow
+
+- Stable core gameplay loop (move, interact, combat)
+- Multi-room system with coherent transitions
+- Puzzle system with triggers and obstacles
+- Combat system with enemy variation and feedback
+- Persistent room state
+- Win / Lose states with restart
+- Key and door mechanic
+- Introduction of risk-based gameplay (key under pressure)
   
 # Project Architecture
 

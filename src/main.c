@@ -153,8 +153,8 @@ int main(void)
                     world.roomObstacleCount,
                     world.toggleObstacles,
                     world.interactiveCount,
-                    &world.lockedDoor,
-                    1
+                    world.lockedDoors,
+                    world.lockedDoorCount
                 );
 
                 updateEnemyMovement(
