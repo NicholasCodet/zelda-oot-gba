@@ -152,7 +152,9 @@ int main(void)
                     world.roomObstacles,
                     world.roomObstacleCount,
                     world.toggleObstacles,
-                    world.interactiveCount
+                    world.interactiveCount,
+                    &world.lockedDoor,
+                    1
                 );
 
                 updateEnemyMovement(
@@ -174,6 +176,7 @@ int main(void)
                 }
 
                 updateWorldInteractions(&world, &player, keysPressed, playerWidth, playerHeight);
+                updateWorldKeyDoor(&world, &player, playerWidth, playerHeight);
                 updateWorldWinState(&world, &player, playerWidth, playerHeight);
 
                 // Final room goal ends the run and switches to dedicated win state.

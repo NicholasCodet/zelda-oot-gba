@@ -33,6 +33,8 @@ typedef struct {
     int initialized;
     int interactiveActive[WORLD_INTERACTIVE_COUNT];
     int toggleObstacleActive[WORLD_INTERACTIVE_COUNT];
+    int keyActive;
+    int lockedDoorActive;
 } RoomPersistentState;
 
 // All simple world state used by this project.
@@ -40,6 +42,8 @@ typedef struct {
     GameObject interactiveObjects[WORLD_INTERACTIVE_COUNT];
     GameObject toggleObstacles[WORLD_INTERACTIVE_COUNT];
     GameObject roomObstacles[WORLD_ROOM_OBSTACLE_COUNT];
+    GameObject keyObject;
+    GameObject lockedDoor;
     GameObject goalArea;
     DoorZone doorZones[WORLD_DOOR_COUNT];
 
@@ -50,6 +54,7 @@ typedef struct {
     int roomObstacleCount;
     int doorCount;
     int interactionRange;
+    int hasKey;
     int hasWon;
     // Debug-oriented: number of invalid layout placements detected
     // when the current room was initialized.
@@ -91,6 +96,13 @@ void updateWorldInteractions(
     World *world,
     const struct Player *player,
     u16 keysPressed,
+    int playerWidth,
+    int playerHeight
+);
+
+void updateWorldKeyDoor(
+    World *world,
+    const struct Player *player,
     int playerWidth,
     int playerHeight
 );

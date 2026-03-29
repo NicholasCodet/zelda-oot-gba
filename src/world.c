@@ -100,6 +100,14 @@ static void validateRoomLayout(World *world)
     if (world->goalArea.active && overlapsRoomGeometry(world, &world->goalArea)) {
         world->layoutValidationIssueCount++;
     }
+
+    if (world->keyObject.active && overlapsRoomGeometry(world, &world->keyObject)) {
+        world->layoutValidationIssueCount++;
+    }
+
+    if (world->lockedDoor.active && overlapsRoomGeometry(world, &world->lockedDoor)) {
+        world->layoutValidationIssueCount++;
+    }
 }
 
 // Save current room interaction state into persistent room storage.
@@ -116,6 +124,8 @@ static void saveCurrentRoomPersistentState(World *world)
         state->interactiveActive[i] = world->interactiveObjects[i].active;
         state->toggleObstacleActive[i] = world->toggleObstacles[i].active;
     }
+    state->keyActive = world->keyObject.active;
+    state->lockedDoorActive = world->lockedDoor.active;
 }
 
 // Load persistent state for the current room, or capture defaults on first load.
@@ -136,6 +146,8 @@ static void applyCurrentRoomPersistentState(World *world)
         world->interactiveObjects[i].active = state->interactiveActive[i];
         world->toggleObstacles[i].active = state->toggleObstacleActive[i];
     }
+    world->keyObject.active = state->keyActive;
+    world->lockedDoor.active = state->lockedDoorActive;
 }
 
 static void loadRoom0(World *world)
@@ -161,6 +173,9 @@ static void loadRoom0(World *world)
 
     // Room 2 uses passage transition only: no active goal teleporter here.
     world->goalArea = (GameObject){ .x = 190, .y = 66, .width = 18, .height = 18, .active = 0 };
+    world->keyObject = (GameObject){ .x = 56, .y = 76, .width = 8, .height = 8, .active = 1 };
+    // Locked door blocks the right opening until the key is used.
+    world->lockedDoor = (GameObject){ .x = 212, .y = 64, .width = 8, .height = 32, .active = 1 };
 
     world->playerSpawnX = 36;
     world->playerSpawnY = 72;
@@ -208,6 +223,8 @@ static void loadRoom1(World *world)
     world->roomObstacles[6] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
     world->goalArea = (GameObject){ .x = 186, .y = 102, .width = 18, .height = 18, .active = 1 };
+    world->keyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->lockedDoor = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
     world->playerSpawnX = 34;
     world->playerSpawnY = 34;
@@ -257,6 +274,8 @@ static void loadRoom2(World *world)
     world->roomObstacles[6] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
     world->goalArea = (GameObject){ .x = 186, .y = 36, .width = 18, .height = 18, .active = 1 };
+    world->keyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->lockedDoor = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
     world->playerSpawnX = 34;
     world->playerSpawnY = 96;
@@ -309,6 +328,8 @@ static void loadRoom3(World *world)
     world->roomObstacles[6] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
     world->goalArea = (GameObject){ .x = 184, .y = 36, .width = 18, .height = 18, .active = 1 };
+    world->keyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->lockedDoor = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
     world->playerSpawnX = 34;
     world->playerSpawnY = 92;
@@ -360,6 +381,8 @@ static void loadRoom4(World *world)
     world->roomObstacles[6] = (GameObject){ .x = 62, .y = 72, .width = 28, .height = 24, .active = 1 };
 
     world->goalArea = (GameObject){ .x = 186, .y = 34, .width = 18, .height = 18, .active = 1 };
+    world->keyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->lockedDoor = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
     world->playerSpawnX = 32;
     world->playerSpawnY = 102;
@@ -398,6 +421,7 @@ void initWorld(World *world)
     world->roomObstacleCount = WORLD_ROOM_OBSTACLE_COUNT;
     world->doorCount = WORLD_DOOR_COUNT;
     world->interactionRange = 10;
+    world->hasKey = 0;
     world->currentRoomIndex = 0;
     world->hasWon = 0;
     world->requestFullPlayfieldRedraw = 1;
@@ -410,6 +434,8 @@ void initWorld(World *world)
             world->roomStates[roomIndex].interactiveActive[i] = 0;
             world->roomStates[roomIndex].toggleObstacleActive[i] = 0;
         }
+        world->roomStates[roomIndex].keyActive = 0;
+        world->roomStates[roomIndex].lockedDoorActive = 0;
     }
 
     loadWorldRoom(world, 0);
@@ -572,6 +598,41 @@ void updateWorldWinState(
     GameObject playerRect = getPlayerRect(player, playerWidth, playerHeight);
     if (isCollidingAABB(&playerRect, &world->goalArea)) {
         world->hasWon = 1;
+    }
+}
+
+void updateWorldKeyDoor(
+    World *world,
+    const Player *player,
+    int playerWidth,
+    int playerHeight
+)
+{
+    if (player->isDead) {
+        return;
+    }
+
+    int changedState = 0;
+    GameObject playerRect = getPlayerRect(player, playerWidth, playerHeight);
+
+    // Collect key on touch.
+    if (world->keyObject.active && isCollidingAABB(&playerRect, &world->keyObject)) {
+        world->keyObject.active = 0;
+        world->hasKey = 1;
+        changedState = 1;
+    }
+
+    // Open locked door if the player has the key and reaches the door.
+    if (world->hasKey && world->lockedDoor.active) {
+        if (isPlayerNearObject(player, playerWidth, playerHeight, &world->lockedDoor, 2)) {
+            world->lockedDoor.active = 0;
+            changedState = 1;
+        }
+    }
+
+    if (changedState) {
+        saveCurrentRoomPersistentState(world);
+        world->requestFullPlayfieldRedraw = 1;
     }
 }
 

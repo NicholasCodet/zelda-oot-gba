@@ -53,7 +53,9 @@ void updatePlayerMovement(
     const GameObject *roomObstacles,
     int roomObstacleCount,
     const GameObject *toggleObstacles,
-    int toggleObstacleCount
+    int toggleObstacleCount,
+    const GameObject *extraObstacles,
+    int extraObstacleCount
 );
 
 #endif

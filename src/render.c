@@ -24,6 +24,11 @@
 #define COLOR_ROOM_OBSTACLE_BORDER RGB5(14, 14, 16)
 #define COLOR_TOGGLE_OBSTACLE RGB5(13, 11, 9)
 #define COLOR_TOGGLE_OBSTACLE_BORDER RGB5(20, 18, 14)
+#define COLOR_LOCKED_DOOR RGB5(14, 8, 3)
+#define COLOR_LOCKED_DOOR_BORDER RGB5(24, 18, 8)
+#define COLOR_LOCKED_DOOR_LOCK RGB5(31, 31, 0)
+#define COLOR_KEY RGB5(31, 31, 0)
+#define COLOR_KEY_BORDER RGB5(31, 20, 0)
 #define COLOR_GOAL RGB5(0, 20, 28)
 #define COLOR_GOAL_BORDER RGB5(31, 31, 31)
 #define COLOR_GOAL_WIN RGB5(0, 28, 10)
@@ -280,6 +285,42 @@ static void drawToggleObstacle(const GameObject *obstacle)
     }
 }
 
+// Key is a compact bright marker to remain easy to identify.
+static void drawKeyObject(const GameObject *keyObject)
+{
+    drawOutlinedRect(
+        keyObject->x,
+        keyObject->y,
+        keyObject->width,
+        keyObject->height,
+        COLOR_KEY,
+        COLOR_KEY_BORDER
+    );
+
+    if (keyObject->width >= 6 && keyObject->height >= 6) {
+        drawPlayfieldRect(keyObject->x + 2, keyObject->y + 2, 2, 2, COLOR_BG);
+    }
+}
+
+// Locked door has a warmer block shape with a bright "lock" marker.
+static void drawLockedDoorObject(const GameObject *doorObject)
+{
+    drawOutlinedRect(
+        doorObject->x,
+        doorObject->y,
+        doorObject->width,
+        doorObject->height,
+        COLOR_LOCKED_DOOR,
+        COLOR_LOCKED_DOOR_BORDER
+    );
+
+    if (doorObject->width >= 4 && doorObject->height >= 6) {
+        int lockX = doorObject->x + (doorObject->width / 2) - 1;
+        int lockY = doorObject->y + (doorObject->height / 2) - 2;
+        drawPlayfieldRect(lockX, lockY, 2, 4, COLOR_LOCKED_DOOR_LOCK);
+    }
+}
+
 static void drawInteractiveObject(const World *world, int index)
 {
     int isActive = world->interactiveObjects[index].active;
@@ -412,6 +453,14 @@ static void redrawSceneRegion(const GameObject *region, const World *world, cons
     GameObject goalVisualRect = getGoalVisualRect(world);
     if (world->goalArea.active && isCollidingAABB(region, &goalVisualRect)) {
         drawGoalArea(world);
+    }
+
+    if (world->lockedDoor.active && isCollidingAABB(region, &world->lockedDoor)) {
+        drawLockedDoorObject(&world->lockedDoor);
+    }
+
+    if (world->keyObject.active && isCollidingAABB(region, &world->keyObject)) {
+        drawKeyObject(&world->keyObject);
     }
 
     if (enemy->active) {

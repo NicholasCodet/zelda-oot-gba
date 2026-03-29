@@ -2,8 +2,7 @@
 
 # Next Action
 
-Add simple visual feedback to make interactions and objectives clearer
-
+Add a simple key and locked door mechanic
 ## Overview
 
 This document tracks the progress of the project.
@@ -249,11 +248,20 @@ Validation:
 ## Phase 11 – Core Polish Preparation
 
 
-Status: ⬜ Not started
+Status: ⏳ In progress
 
 Tasks: 
+- [x] Add a simple key and locked door mechanic
+- [ ] Improve clarity of objectives through visual feedback
+- [ ] Ensure important interactive elements are visually distinct
+- [ ] Improve consistency of player understanding (what to do / where to go)
+- [ ] Refine game loop clarity (start → play → win/lose → restart)
 
 Validation:
+- [ ] Player can understand objectives without explanation
+- [ ] Key gameplay elements (key, door, goal, trigger) are clearly identifiable
+- [ ] Game progression feels natural and understandable
+- [ ] Game loop is clear and complete
 
 ---
 

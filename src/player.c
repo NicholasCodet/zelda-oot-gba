@@ -52,7 +52,9 @@ void updatePlayerMovement(
     const GameObject *roomObstacles,
     int roomObstacleCount,
     const GameObject *toggleObstacles,
-    int toggleObstacleCount
+    int toggleObstacleCount,
+    const GameObject *extraObstacles,
+    int extraObstacleCount
 )
 {
     if (player->isDead) {
@@ -113,6 +115,9 @@ void updatePlayerMovement(
         if (!isBlockedX) {
             isBlockedX = isCollidingWithActiveObjects(&nextPlayerRectX, toggleObstacles, toggleObstacleCount);
         }
+        if (!isBlockedX) {
+            isBlockedX = isCollidingWithActiveObjects(&nextPlayerRectX, extraObstacles, extraObstacleCount);
+        }
 
         if (!isBlockedX) {
             player->x = nextX;
@@ -143,6 +148,9 @@ void updatePlayerMovement(
         int isBlockedY = isCollidingWithActiveObjects(&nextPlayerRectY, roomObstacles, roomObstacleCount);
         if (!isBlockedY) {
             isBlockedY = isCollidingWithActiveObjects(&nextPlayerRectY, toggleObstacles, toggleObstacleCount);
+        }
+        if (!isBlockedY) {
+            isBlockedY = isCollidingWithActiveObjects(&nextPlayerRectY, extraObstacles, extraObstacleCount);
         }
 
         if (!isBlockedY) {
