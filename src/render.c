@@ -31,9 +31,14 @@
 #define COLOR_ENEMY_BORDER RGB5(31, 28, 0)
 #define COLOR_ENEMY_CORE RGB5(20, 0, 0)
 #define COLOR_ENEMY_EYE RGB5(31, 31, 0)
+#define COLOR_ENEMY_FLASH RGB5(31, 31, 31)
+#define COLOR_ENEMY_FLASH_BORDER RGB5(31, 16, 0)
+#define COLOR_ENEMY_FLASH_CORE RGB5(31, 20, 0)
+#define COLOR_ENEMY_FLASH_EYE RGB5(31, 0, 0)
 #define COLOR_SWITCH_BORDER RGB5(31, 31, 31)
 #define COLOR_SWITCH_CORE_ON RGB5(31, 31, 31)
 #define COLOR_SWITCH_CORE_OFF RGB5(6, 6, 6)
+#define COLOR_SWITCH_FILL_ON RGB5(0, 9, 12)
 #define GOAL_VISUAL_PADDING 3
 
 // Player sprite setup state.
@@ -243,40 +248,42 @@ static void drawToggleObstacle(const GameObject *obstacle)
 
 static void drawInteractiveObject(const World *world, int index)
 {
-    u16 borderColor = world->interactiveObjects[index].active
+    int isActive = world->interactiveObjects[index].active;
+    u16 borderColor = isActive
         ? world->interactiveOnColor[index]
         : world->interactiveOffColor[index];
-    u16 coreColor = world->interactiveObjects[index].active ? COLOR_SWITCH_CORE_ON : COLOR_SWITCH_CORE_OFF;
+    u16 fillColor = isActive ? COLOR_SWITCH_FILL_ON : COLOR_BG;
 
-    // Hollow double outline gives triggers a clear shape distinct from obstacles.
+    // Triggers are drawn with a distinctive shape and clear ON/OFF fill change.
     drawOutlinedRect(
         world->interactiveObjects[index].x,
         world->interactiveObjects[index].y,
         world->interactiveObjects[index].width,
         world->interactiveObjects[index].height,
-        COLOR_BG,
+        fillColor,
         borderColor
     );
 
-    if (world->interactiveObjects[index].width >= 8 && world->interactiveObjects[index].height >= 8) {
-        drawOutlinedRect(
-            world->interactiveObjects[index].x + 2,
-            world->interactiveObjects[index].y + 2,
-            world->interactiveObjects[index].width - 4,
-            world->interactiveObjects[index].height - 4,
-            COLOR_BG,
-            COLOR_SWITCH_BORDER
-        );
-    }
+    int centerX = world->interactiveObjects[index].x + (world->interactiveObjects[index].width / 2);
+    int centerY = world->interactiveObjects[index].y + (world->interactiveObjects[index].height / 2);
 
-    // ON/OFF state remains visible via center brightness.
-    drawFilledRect(
-        world->interactiveObjects[index].x + (world->interactiveObjects[index].width / 2) - 2,
-        world->interactiveObjects[index].y + (world->interactiveObjects[index].height / 2) - 2,
-        4,
-        4,
-        coreColor
-    );
+    if (isActive) {
+        // ON: brighter center block.
+        drawFilledRect(centerX - 3, centerY - 3, 6, 6, COLOR_SWITCH_CORE_ON);
+    } else {
+        // OFF: hollow look with small dark center.
+        if (world->interactiveObjects[index].width >= 8 && world->interactiveObjects[index].height >= 8) {
+            drawOutlinedRect(
+                world->interactiveObjects[index].x + 2,
+                world->interactiveObjects[index].y + 2,
+                world->interactiveObjects[index].width - 4,
+                world->interactiveObjects[index].height - 4,
+                COLOR_BG,
+                COLOR_SWITCH_BORDER
+            );
+        }
+        drawFilledRect(centerX - 2, centerY - 2, 4, 4, COLOR_SWITCH_CORE_OFF);
+    }
 }
 
 static void drawGoalArea(const World *world)
@@ -309,20 +316,26 @@ static void drawGoalArea(const World *world)
 
 static void drawEnemyRect(const Enemy *enemy)
 {
+    int enemyFlashOn = (enemy->hitFlashTimer > 0) && (((enemy->hitFlashTimer / 2) & 1) == 0);
+    u16 enemyBodyColor = enemyFlashOn ? COLOR_ENEMY_FLASH : COLOR_ENEMY;
+    u16 enemyBorderColor = enemyFlashOn ? COLOR_ENEMY_FLASH_BORDER : COLOR_ENEMY_BORDER;
+    u16 enemyCoreColor = enemyFlashOn ? COLOR_ENEMY_FLASH_CORE : COLOR_ENEMY_CORE;
+    u16 enemyEyeColor = enemyFlashOn ? COLOR_ENEMY_FLASH_EYE : COLOR_ENEMY_EYE;
+
     drawOutlinedRect(
         enemy->x,
         enemy->y,
         enemy->width,
         enemy->height,
-        COLOR_ENEMY,
-        COLOR_ENEMY_BORDER
+        enemyBodyColor,
+        enemyBorderColor
     );
 
     // Add a darker center and two bright "eyes" for quick danger recognition.
     if (enemy->width >= 8 && enemy->height >= 8) {
-        drawFilledRect(enemy->x + 2, enemy->y + 2, enemy->width - 4, enemy->height - 4, COLOR_ENEMY_CORE);
-        drawFilledRect(enemy->x + 3, enemy->y + 3, 2, 2, COLOR_ENEMY_EYE);
-        drawFilledRect(enemy->x + enemy->width - 5, enemy->y + 3, 2, 2, COLOR_ENEMY_EYE);
+        drawFilledRect(enemy->x + 2, enemy->y + 2, enemy->width - 4, enemy->height - 4, enemyCoreColor);
+        drawFilledRect(enemy->x + 3, enemy->y + 3, 2, 2, enemyEyeColor);
+        drawFilledRect(enemy->x + enemy->width - 5, enemy->y + 3, 2, 2, enemyEyeColor);
     }
 }
 

@@ -44,6 +44,9 @@ typedef struct {
     int doorCount;
     int interactionRange;
     int hasWon;
+    // Debug-oriented: number of invalid layout placements detected
+    // when the current room was initialized.
+    int layoutValidationIssueCount;
     // Set by world update code when environment state changes and a full
     // playfield redraw is needed on the next render frame.
     int requestFullPlayfieldRedraw;

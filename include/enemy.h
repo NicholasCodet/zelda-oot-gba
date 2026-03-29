@@ -26,6 +26,10 @@ typedef struct {
     int moveSpeed;
     int moveDirection; // 1 = positive axis direction, -1 = negative
     EnemyMoveAxis moveAxis;
+
+    // Short visual feedback timer used when the enemy is hit.
+    int hitFlashTimer;
+    int hitFlashDuration;
 } Enemy;
 
 void initEnemy(

@@ -4,15 +4,115 @@
 #include "player.h"
 #include "enemy.h"
 
+#define WORLD_PLAYER_RECT_WIDTH 12
+#define WORLD_PLAYER_RECT_HEIGHT 12
+#define WORLD_ENEMY_RECT_WIDTH 14
+#define WORLD_ENEMY_RECT_HEIGHT 14
+#define WORLD_SCAN_MIN_X 20
+#define WORLD_SCAN_MIN_Y 20
+#define WORLD_SCAN_MAX_X 220
+#define WORLD_SCAN_MAX_Y 140
+
+// Returns 1 if the rectangle overlaps any active room geometry.
+static int overlapsRoomGeometry(const World *world, const GameObject *rect)
+{
+    int overlaps = isCollidingWithActiveObjects(rect, world->roomObstacles, world->roomObstacleCount);
+    if (!overlaps) {
+        overlaps = isCollidingWithActiveObjects(rect, world->toggleObstacles, world->interactiveCount);
+    }
+
+    return overlaps;
+}
+
+// Find a simple walkable placement for a rectangle inside room bounds.
+static int findWalkablePlacement(const World *world, int width, int height, int *outX, int *outY)
+{
+    for (int y = WORLD_SCAN_MIN_Y; y <= (WORLD_SCAN_MAX_Y - height); y += 2) {
+        for (int x = WORLD_SCAN_MIN_X; x <= (WORLD_SCAN_MAX_X - width); x += 2) {
+            GameObject testRect = {
+                .x = x,
+                .y = y,
+                .width = width,
+                .height = height,
+                .active = 1
+            };
+
+            if (!overlapsRoomGeometry(world, &testRect)) {
+                *outX = x;
+                *outY = y;
+                return 1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+// Lightweight room validation:
+// - detect invalid overlaps for key room objects
+// - auto-correct player/enemy spawn if they start inside geometry
+static void validateRoomLayout(World *world)
+{
+    world->layoutValidationIssueCount = 0;
+
+    GameObject playerSpawnRect = {
+        .x = world->playerSpawnX,
+        .y = world->playerSpawnY,
+        .width = WORLD_PLAYER_RECT_WIDTH,
+        .height = WORLD_PLAYER_RECT_HEIGHT,
+        .active = 1
+    };
+    if (overlapsRoomGeometry(world, &playerSpawnRect)) {
+        world->layoutValidationIssueCount++;
+        (void)findWalkablePlacement(
+            world,
+            WORLD_PLAYER_RECT_WIDTH,
+            WORLD_PLAYER_RECT_HEIGHT,
+            &world->playerSpawnX,
+            &world->playerSpawnY
+        );
+    }
+
+    GameObject enemySpawnRect = {
+        .x = world->enemySpawnX,
+        .y = world->enemySpawnY,
+        .width = WORLD_ENEMY_RECT_WIDTH,
+        .height = WORLD_ENEMY_RECT_HEIGHT,
+        .active = 1
+    };
+    if (overlapsRoomGeometry(world, &enemySpawnRect)) {
+        world->layoutValidationIssueCount++;
+        (void)findWalkablePlacement(
+            world,
+            WORLD_ENEMY_RECT_WIDTH,
+            WORLD_ENEMY_RECT_HEIGHT,
+            &world->enemySpawnX,
+            &world->enemySpawnY
+        );
+    }
+
+    for (int i = 0; i < world->interactiveCount; i++) {
+        if (overlapsRoomGeometry(world, &world->interactiveObjects[i])) {
+            world->layoutValidationIssueCount++;
+        }
+    }
+
+    if (world->goalArea.active && overlapsRoomGeometry(world, &world->goalArea)) {
+        world->layoutValidationIssueCount++;
+    }
+}
+
 static void loadRoom0(World *world)
 {
     // Interaction room (progression room 2):
     // primary exit is a spatial passage to room 3 on the right side.
+    // Compared to room 1, this room increases pressure with a wider center
+    // blocker and a stronger enemy patrol.
     world->interactiveObjects[0] = (GameObject){ .x = 34, .y = 34, .width = 16, .height = 16, .active = 0 };
-    world->interactiveObjects[1] = (GameObject){ .x = 60, .y = 104, .width = 16, .height = 16, .active = 0 };
+    world->interactiveObjects[1] = (GameObject){ .x = 130, .y = 104, .width = 16, .height = 16, .active = 0 };
 
-    world->toggleObstacles[0] = (GameObject){ .x = 156, .y = 28, .width = 12, .height = 104, .active = 1 };
-    world->toggleObstacles[1] = (GameObject){ .x = 168, .y = 28, .width = 12, .height = 104, .active = 1 };
+    world->toggleObstacles[0] = (GameObject){ .x = 152, .y = 28, .width = 12, .height = 104, .active = 1 };
+    world->toggleObstacles[1] = (GameObject){ .x = 164, .y = 28, .width = 12, .height = 104, .active = 1 };
 
     // Outer room bounds with a single right-side opening at y=64..95.
     world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 200, .height = 8, .active = 1 };   // top
@@ -20,7 +120,7 @@ static void loadRoom0(World *world)
     world->roomObstacles[2] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };   // left wall (closed)
     world->roomObstacles[3] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 44, .active = 1 };   // right upper
     world->roomObstacles[4] = (GameObject){ .x = 212, .y = 96, .width = 8, .height = 44, .active = 1 };   // right lower
-    world->roomObstacles[5] = (GameObject){ .x = 96, .y = 52, .width = 28, .height = 56, .active = 1 };
+    world->roomObstacles[5] = (GameObject){ .x = 92, .y = 48, .width = 36, .height = 64, .active = 1 };
     world->roomObstacles[6] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
     // Room 2 uses passage transition only: no active goal teleporter here.
@@ -28,10 +128,10 @@ static void loadRoom0(World *world)
 
     world->playerSpawnX = 36;
     world->playerSpawnY = 72;
-    world->enemySpawnX = 86;
-    world->enemySpawnY = 112;
+    world->enemySpawnX = 68;
+    world->enemySpawnY = 94;
     world->enemyMaxHealth = 2;
-    world->enemyMoveRange = 20;
+    world->enemyMoveRange = 16;
     world->enemyMoveAxis = ENEMY_MOVE_AXIS_X;
 
     // Single spatial door: room 2 -> room 3.
@@ -55,18 +155,19 @@ static void loadRoom1(World *world)
 {
     // Intro room (progression room 1):
     // primary exit is the goal teleporter to room 2.
+    // Keep interactions close and readable to reduce early friction.
     world->interactiveObjects[0] = (GameObject){ .x = 34, .y = 56, .width = 16, .height = 16, .active = 0 };
-    world->interactiveObjects[1] = (GameObject){ .x = 88, .y = 108, .width = 16, .height = 16, .active = 0 };
+    world->interactiveObjects[1] = (GameObject){ .x = 90, .y = 104, .width = 16, .height = 16, .active = 0 };
 
-    world->toggleObstacles[0] = (GameObject){ .x = 116, .y = 28, .width = 12, .height = 104, .active = 1 };
-    world->toggleObstacles[1] = (GameObject){ .x = 128, .y = 28, .width = 12, .height = 104, .active = 1 };
+    world->toggleObstacles[0] = (GameObject){ .x = 120, .y = 28, .width = 10, .height = 104, .active = 1 };
+    world->toggleObstacles[1] = (GameObject){ .x = 130, .y = 28, .width = 10, .height = 104, .active = 1 };
 
     // Closed room bounds: no spatial passage in this room.
     world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 200, .height = 8, .active = 1 };   // top
     world->roomObstacles[1] = (GameObject){ .x = 20, .y = 132, .width = 200, .height = 8, .active = 1 };  // bottom
     world->roomObstacles[2] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };   // left
     world->roomObstacles[3] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };  // right
-    world->roomObstacles[4] = (GameObject){ .x = 52, .y = 44, .width = 36, .height = 72, .active = 1 };
+    world->roomObstacles[4] = (GameObject){ .x = 56, .y = 50, .width = 24, .height = 60, .active = 1 };
     world->roomObstacles[5] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
     world->roomObstacles[6] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
@@ -74,10 +175,10 @@ static void loadRoom1(World *world)
 
     world->playerSpawnX = 34;
     world->playerSpawnY = 34;
-    world->enemySpawnX = 98;
+    world->enemySpawnX = 150;
     world->enemySpawnY = 84;
     world->enemyMaxHealth = 1;
-    world->enemyMoveRange = 6;
+    world->enemyMoveRange = 4;
     world->enemyMoveAxis = ENEMY_MOVE_AXIS_X;
 
     // No spatial exits in this room.
@@ -123,10 +224,10 @@ static void loadRoom2(World *world)
 
     world->playerSpawnX = 34;
     world->playerSpawnY = 96;
-    world->enemySpawnX = 72;
-    world->enemySpawnY = 36;
+    world->enemySpawnX = 90;
+    world->enemySpawnY = 44;
     world->enemyMaxHealth = 2;
-    world->enemyMoveRange = 20;
+    world->enemyMoveRange = 18;
     world->enemyMoveAxis = ENEMY_MOVE_AXIS_X;
 
     // Matching return passage: room 3 -> room 2.
@@ -153,7 +254,7 @@ static void loadRoom3(World *world)
     // 1) Activate switch 0 to open the center gate into the enemy zone.
     // 2) Reach switch 1 on the right side to open the goal chamber gate.
     world->interactiveObjects[0] = (GameObject){ .x = 36, .y = 104, .width = 16, .height = 16, .active = 0 };
-    world->interactiveObjects[1] = (GameObject){ .x = 166, .y = 102, .width = 16, .height = 16, .active = 0 };
+    world->interactiveObjects[1] = (GameObject){ .x = 170, .y = 84, .width = 16, .height = 16, .active = 0 };
 
     // Gate 0 blocks left-to-right traversal until switch 0 is activated.
     world->toggleObstacles[0] = (GameObject){ .x = 104, .y = 28, .width = 12, .height = 104, .active = 1 };
@@ -167,7 +268,8 @@ static void loadRoom3(World *world)
     world->roomObstacles[3] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };  // right
     // Bottom wall of the goal chamber: keeps it physically gated until gate 1 opens.
     world->roomObstacles[4] = (GameObject){ .x = 140, .y = 64, .width = 72, .height = 12, .active = 1 };
-    world->roomObstacles[5] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    // Extra center pillar tightens navigation in the final room.
+    world->roomObstacles[5] = (GameObject){ .x = 72, .y = 64, .width = 20, .height = 48, .active = 1 };
     world->roomObstacles[6] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
     world->goalArea = (GameObject){ .x = 184, .y = 36, .width = 18, .height = 18, .active = 1 };
@@ -175,10 +277,10 @@ static void loadRoom3(World *world)
     world->playerSpawnX = 34;
     world->playerSpawnY = 92;
     // Variation: this room uses a vertical patrol enemy with higher health.
-    world->enemySpawnX = 152;
-    world->enemySpawnY = 100;
+    world->enemySpawnX = 150;
+    world->enemySpawnY = 86;
     world->enemyMaxHealth = 3;
-    world->enemyMoveRange = 18;
+    world->enemyMoveRange = 26;
     world->enemyMoveAxis = ENEMY_MOVE_AXIS_Y;
 
     // No spatial exits in this room.
@@ -242,6 +344,9 @@ void loadWorldRoom(World *world, int roomIndex)
     } else {
         loadRoom3(world);
     }
+
+    // Run a simple layout sanity check after all room objects are initialized.
+    validateRoomLayout(world);
 
     // Every new room starts in a non-win state.
     world->hasWon = 0;

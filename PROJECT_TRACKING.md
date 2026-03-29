@@ -206,19 +206,19 @@ Tasks:
 - [x] Fix global blink on interaction, goal validation, and room transitions
 - [x] Validate multi-room gameplay flow
 - [x] Validate final visual stability across all rooms
-- [ ] Clarify transition types between rooms
-- [ ] Use spatial passage only where it improves exploration feel
-- [ ] Keep teleporter transitions explicit and intentional
-- [ ] Remove Room 2 teleporter and make Room 2 -> Room 3 a true spatial passage
-- [ ] Make Room 2 <-> Room 3 bidirectional through matching openings
-- [ ] Clarify transition identity of each room
+- [x] Clarify transition types between rooms
+- [x] Use spatial passage only where it improves exploration feel
+- [x] Keep teleporter transitions explicit and intentional
+- [x] Remove Room 2 teleporter and make Room 2 -> Room 3 a true spatial passage
+- [x] Make Room 2 <-> Room 3 bidirectional through matching openings
+- [x] Clarify transition identity of each room
 
 Validation:
 - [x] Room 3 & 4 provides a meaningful gameplay variation
 - [x] World state changes no longer cause visible blinking
 - [x] Multi-room flow feels visually stable
-- [ ] Each room has a clear transition identity
-- [ ] Room-to-room flow feels understandable
+- [x] Each room has a clear transition identity
+- [x] Room-to-room flow feels understandable
 
 ---
 
@@ -231,6 +231,10 @@ Tasks:
 - [ ] Integrate enemy variations into different rooms
 - [ ] Balance combat difficulty across rooms
 - [ ] Improve gameplay progression using combat + puzzle combinations
+- [ ] Improve hit feedback (enemy reaction)
+- [ ] Improve player damage feedback
+- [ ] Improve interaction feedback
+- [ ] Improve overall game feel
 
 Validation:
 - [ ] Different rooms create different combat situations
@@ -325,6 +329,9 @@ Validation:
 - Added a fourth room with stronger gameplay variation
 - Removed global screen blink during world state changes
 - Validated stable multi-room gameplay progression
+- Fixed invalid initial room placements
+- Added room layout validation safeguards
+- Stabilized multi-room progression and room flow
   
 # Project Architecture
 

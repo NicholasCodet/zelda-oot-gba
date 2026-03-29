@@ -70,6 +70,11 @@ void updateCombat(
     int playerHeight
 )
 {
+    // Tick down enemy hit feedback timer.
+    if (enemy->hitFlashTimer > 0) {
+        enemy->hitFlashTimer--;
+    }
+
     // Dead player cannot attack or take further contact damage.
     if (player->isDead) {
         attack->active = 0;
@@ -88,6 +93,7 @@ void updateCombat(
             if (isCollidingAABB(&attackRect, &enemyRect)) {
                 // One attack swing removes one enemy health point.
                 enemy->health--;
+                enemy->hitFlashTimer = enemy->hitFlashDuration;
                 attack->hasHitEnemy = 1;
 
                 // Remove the enemy only when health reaches zero.

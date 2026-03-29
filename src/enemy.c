@@ -27,6 +27,9 @@ void initEnemy(
     enemy->moveSpeed = moveSpeed;
     enemy->moveDirection = 1;
     enemy->moveAxis = moveAxis;
+
+    enemy->hitFlashTimer = 0;
+    enemy->hitFlashDuration = 6;
 }
 
 GameObject getEnemyRect(const Enemy *enemy)
