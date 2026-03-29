@@ -49,4 +49,7 @@ void renderFrame(
     RenderState *state
 );
 
+// Draw a simple full-screen end state (win/lose) overlay.
+void drawEndStateScreen(int didWin);
+
 #endif

@@ -6,7 +6,7 @@
 #define WORLD_INTERACTIVE_COUNT 2
 #define WORLD_ROOM_OBSTACLE_COUNT 7
 #define WORLD_DOOR_COUNT 2
-#define WORLD_ROOM_COUNT 4
+#define WORLD_ROOM_COUNT 5
 
 // Generic rectangle/object used for world layout and collision.
 typedef struct {
@@ -27,6 +27,13 @@ typedef struct {
     int targetSpawnY;
     int active;
 } DoorZone;
+
+// Minimal persistent puzzle state stored per room.
+typedef struct {
+    int initialized;
+    int interactiveActive[WORLD_INTERACTIVE_COUNT];
+    int toggleObstacleActive[WORLD_INTERACTIVE_COUNT];
+} RoomPersistentState;
 
 // All simple world state used by this project.
 typedef struct {
@@ -54,6 +61,7 @@ typedef struct {
     // Simple room-state tracking for room transitions.
     int currentRoomIndex;
     int roomCount;
+    RoomPersistentState roomStates[WORLD_ROOM_COUNT];
 
     // Spawn data for the current room.
     int playerSpawnX;

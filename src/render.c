@@ -40,9 +40,43 @@
 #define COLOR_SWITCH_CORE_OFF RGB5(6, 6, 6)
 #define COLOR_SWITCH_FILL_ON RGB5(0, 9, 12)
 #define GOAL_VISUAL_PADDING 3
+#define COLOR_END_WIN_BG RGB5(4, 8, 16)
+#define COLOR_END_LOSE_BG RGB5(12, 0, 0)
+#define COLOR_END_INDICATOR_FILL RGB5(20, 20, 20)
+#define COLOR_END_INDICATOR_BORDER RGB5(31, 31, 31)
 
 // Player sprite setup state.
 static int gPlayerSpriteReady = 0;
+
+// Full-screen clear used by end-state screens.
+// This path is independent from gameplay redraw helpers.
+static void clearFullScreen(u16 color)
+{
+    volatile u16 *videoBuffer = (volatile u16 *)MODE3_FB;
+
+    for (int i = 0; i < (SCREEN_WIDTH * SCREEN_HEIGHT); i++) {
+        videoBuffer[i] = color;
+    }
+}
+
+// Draw a centered indicator block so win/lose screens are visually clear.
+static void drawCenteredIndicator(u16 fillColor, u16 borderColor)
+{
+    volatile u16 *videoBuffer = (volatile u16 *)MODE3_FB;
+    const int boxWidth = 96;
+    const int boxHeight = 40;
+    const int startX = (SCREEN_WIDTH - boxWidth) / 2;
+    const int startY = (SCREEN_HEIGHT - boxHeight) / 2;
+    const int endX = startX + boxWidth;
+    const int endY = startY + boxHeight;
+
+    for (int y = startY; y < endY; y++) {
+        for (int x = startX; x < endX; x++) {
+            int isBorder = (x == startX) || (x == endX - 1) || (y == startY) || (y == endY - 1);
+            videoBuffer[y * SCREEN_WIDTH + x] = isBorder ? borderColor : fillColor;
+        }
+    }
+}
 
 // Set one pixel inside a 16x16 4bpp sprite tile set (2x2 tiles).
 static void setPlayerSpritePixel(u32 *tileWords, int x, int y, u32 paletteIndex)
@@ -532,4 +566,23 @@ void renderFrame(
         state->prevInteractiveState[i] = world->interactiveObjects[i].active;
         state->prevToggleState[i] = world->toggleObstacles[i].active;
     }
+}
+
+void drawEndStateScreen(int didWin)
+{
+    // Hide the player sprite while showing a static end-state screen.
+    if (gPlayerSpriteReady) {
+        OAM[PLAYER_SPRITE_OAM_INDEX].attr0 = ATTR0_DISABLED;
+        OAM[PLAYER_SPRITE_OAM_INDEX].attr1 = 0;
+        OAM[PLAYER_SPRITE_OAM_INDEX].attr2 = 0;
+    }
+
+    // Full redraw only: no partial/incremental world path used here.
+    if (didWin) {
+        clearFullScreen(COLOR_END_WIN_BG);
+    } else {
+        clearFullScreen(COLOR_END_LOSE_BG);
+    }
+
+    drawCenteredIndicator(COLOR_END_INDICATOR_FILL, COLOR_END_INDICATOR_BORDER);
 }

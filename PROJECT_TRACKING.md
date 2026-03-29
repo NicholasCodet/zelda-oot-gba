@@ -2,7 +2,7 @@
 
 # Next Action
 
-Redesign the latest room so the puzzle is enforced by level geometry
+Add simple visual feedback to make interactions and objectives clearer
 
 ## Overview
 
@@ -224,22 +224,25 @@ Validation:
 
 ## Phase 10 – Combat Refinement
 
-Status: ⏳ In progress
+Status: ✅ Completed
 
 Tasks:
 - [x] Add a second enemy behavior variation
-- [ ] Integrate enemy variations into different rooms
-- [ ] Balance combat difficulty across rooms
-- [ ] Improve gameplay progression using combat + puzzle combinations
-- [ ] Improve hit feedback (enemy reaction)
-- [ ] Improve player damage feedback
-- [ ] Improve interaction feedback
-- [ ] Improve overall game feel
+- [x] Integrate enemy variations into different rooms
+- [x] Balance combat difficulty across rooms
+- [x] Improve gameplay progression using combat + puzzle combinations
+- [x] Improve hit feedback (enemy reaction)
+- [x] Improve player damage feedback
+- [x] Improve interaction feedback
+- [x] Improve overall game feel
+- [x] Make room state persist across room transitions
 
 Validation:
-- [ ] Different rooms create different combat situations
-- [ ] Enemy variations impact player behavior
-- [ ] Difficulty increases progressively across rooms
+- [x] Different rooms create different combat situations
+- [x] Enemy variations impact player behavior
+- [x] Difficulty increases progressively across rooms
+- [x] Combat feels satisfying and readable in all situations
+- [x] Returning to a previous room preserves its puzzle state
 
 ---
 
@@ -408,3 +411,6 @@ Prefer small, focused tasks.
   a rectangle may appear over the enemy.
 - Minor rendering artifacts can appear when the player attack overlaps a wall.
 - These issues are currently deferred because they do not block gameplay progression.
+- Room state is persistent across the full room loop.
+- Rooms do not reset when cycling back to Room 1.
+- Reset behavior is deferred to a future restart/death/system design pass.

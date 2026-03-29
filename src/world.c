@@ -102,6 +102,42 @@ static void validateRoomLayout(World *world)
     }
 }
 
+// Save current room interaction state into persistent room storage.
+static void saveCurrentRoomPersistentState(World *world)
+{
+    if (world->currentRoomIndex < 0 || world->currentRoomIndex >= world->roomCount) {
+        return;
+    }
+
+    RoomPersistentState *state = &world->roomStates[world->currentRoomIndex];
+    state->initialized = 1;
+
+    for (int i = 0; i < world->interactiveCount; i++) {
+        state->interactiveActive[i] = world->interactiveObjects[i].active;
+        state->toggleObstacleActive[i] = world->toggleObstacles[i].active;
+    }
+}
+
+// Load persistent state for the current room, or capture defaults on first load.
+static void applyCurrentRoomPersistentState(World *world)
+{
+    if (world->currentRoomIndex < 0 || world->currentRoomIndex >= world->roomCount) {
+        return;
+    }
+
+    RoomPersistentState *state = &world->roomStates[world->currentRoomIndex];
+
+    if (!state->initialized) {
+        saveCurrentRoomPersistentState(world);
+        return;
+    }
+
+    for (int i = 0; i < world->interactiveCount; i++) {
+        world->interactiveObjects[i].active = state->interactiveActive[i];
+        world->toggleObstacles[i].active = state->toggleObstacleActive[i];
+    }
+}
+
 static void loadRoom0(World *world)
 {
     // Interaction room (progression room 2):
@@ -300,6 +336,56 @@ static void loadRoom3(World *world)
     };
 }
 
+static void loadRoom4(World *world)
+{
+    // Pressure room (progression room 5):
+    // the player must activate two switches in tighter lanes while an enemy
+    // patrols close to the interaction path.
+    world->interactiveObjects[0] = (GameObject){ .x = 34, .y = 108, .width = 16, .height = 16, .active = 0 };
+    world->interactiveObjects[1] = (GameObject){ .x = 168, .y = 108, .width = 16, .height = 16, .active = 0 };
+
+    // Two gates shape a staged path toward the goal.
+    world->toggleObstacles[0] = (GameObject){ .x = 94, .y = 84, .width = 52, .height = 10, .active = 1 };
+    // Final gate spans from the center pillar to the right wall so it cannot
+    // be bypassed; switch 1 must be used to open the goal approach.
+    world->toggleObstacles[1] = (GameObject){ .x = 128, .y = 52, .width = 84, .height = 10, .active = 1 };
+
+    world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 200, .height = 8, .active = 1 };   // top
+    world->roomObstacles[1] = (GameObject){ .x = 20, .y = 132, .width = 200, .height = 8, .active = 1 };  // bottom
+    world->roomObstacles[2] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };   // left
+    world->roomObstacles[3] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };  // right
+    // Tight lane blockers that increase movement pressure.
+    world->roomObstacles[4] = (GameObject){ .x = 108, .y = 28, .width = 20, .height = 56, .active = 1 };
+    world->roomObstacles[5] = (GameObject){ .x = 108, .y = 96, .width = 20, .height = 36, .active = 1 };
+    world->roomObstacles[6] = (GameObject){ .x = 62, .y = 72, .width = 28, .height = 24, .active = 1 };
+
+    world->goalArea = (GameObject){ .x = 186, .y = 34, .width = 18, .height = 18, .active = 1 };
+
+    world->playerSpawnX = 32;
+    world->playerSpawnY = 102;
+    world->enemySpawnX = 146;
+    world->enemySpawnY = 82;
+    world->enemyMaxHealth = 3;
+    world->enemyMoveRange = 28;
+    world->enemyMoveAxis = ENEMY_MOVE_AXIS_Y;
+
+    // No spatial exits in this room (goal transition room).
+    world->doorZones[0] = (DoorZone){
+        .zone = { .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 },
+        .targetRoomIndex = 0,
+        .targetSpawnX = 0,
+        .targetSpawnY = 0,
+        .active = 0
+    };
+    world->doorZones[1] = (DoorZone){
+        .zone = { .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 },
+        .targetRoomIndex = 0,
+        .targetSpawnX = 0,
+        .targetSpawnY = 0,
+        .active = 0
+    };
+}
+
 void initWorld(World *world)
 {
     world->interactiveOffColor[0] = RGB5(0, 0, 31);
@@ -315,6 +401,16 @@ void initWorld(World *world)
     world->currentRoomIndex = 0;
     world->hasWon = 0;
     world->requestFullPlayfieldRedraw = 1;
+
+    // Persistence storage is initialized once; defaults are captured
+    // on first load of each room.
+    for (int roomIndex = 0; roomIndex < WORLD_ROOM_COUNT; roomIndex++) {
+        world->roomStates[roomIndex].initialized = 0;
+        for (int i = 0; i < WORLD_INTERACTIVE_COUNT; i++) {
+            world->roomStates[roomIndex].interactiveActive[i] = 0;
+            world->roomStates[roomIndex].toggleObstacleActive[i] = 0;
+        }
+    }
 
     loadWorldRoom(world, 0);
 }
@@ -333,7 +429,7 @@ void loadWorldRoom(World *world, int roomIndex)
     world->currentRoomIndex = roomIndex;
 
     // Progression order:
-    // 0 = intro -> 1 = interaction -> 2 = puzzle -> 3 = challenge.
+    // 0 = intro -> 1 = interaction -> 2 = puzzle -> 3 = challenge -> 4 = pressure.
     // Room builders stay separate so layouts remain easy to tune.
     if (roomIndex == 0) {
         loadRoom1(world);
@@ -341,9 +437,14 @@ void loadWorldRoom(World *world, int roomIndex)
         loadRoom0(world);
     } else if (roomIndex == 2) {
         loadRoom2(world);
-    } else {
+    } else if (roomIndex == 3) {
         loadRoom3(world);
+    } else {
+        loadRoom4(world);
     }
+
+    // Apply per-room persistent interaction/obstacle states.
+    applyCurrentRoomPersistentState(world);
 
     // Run a simple layout sanity check after all room objects are initialized.
     validateRoomLayout(world);
@@ -407,6 +508,8 @@ void updateWorldInteractions(
         return;
     }
 
+    int changedState = 0;
+
     for (int i = 0; i < world->interactiveCount; i++) {
         if ((keysPressed & KEY_A) == 0) {
             continue;
@@ -424,6 +527,7 @@ void updateWorldInteractions(
         if (nextState) {
             world->interactiveObjects[i].active = 1;
             world->toggleObstacles[i].active = 0;
+            changedState = 1;
         } else {
             // Keep overlap guard to avoid trapping the player.
             GameObject playerRect = getPlayerRect(player, playerWidth, playerHeight);
@@ -431,8 +535,13 @@ void updateWorldInteractions(
             if (isCollidingAABB(&playerRect, &world->toggleObstacles[i]) == 0) {
                 world->interactiveObjects[i].active = 0;
                 world->toggleObstacles[i].active = 1;
+                changedState = 1;
             }
         }
+    }
+
+    if (changedState) {
+        saveCurrentRoomPersistentState(world);
     }
 }
 
