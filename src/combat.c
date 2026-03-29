@@ -1,5 +1,59 @@
 #include "combat.h"
 
+static int signValue(int value)
+{
+    if (value > 0) {
+        return 1;
+    }
+    if (value < 0) {
+        return -1;
+    }
+    return 0;
+}
+
+static void clampEnemyToScreen(Enemy *enemy)
+{
+    if (enemy->x < 0) {
+        enemy->x = 0;
+    }
+    if (enemy->x > (240 - enemy->width)) {
+        enemy->x = 240 - enemy->width;
+    }
+
+    if (enemy->y < 0) {
+        enemy->y = 0;
+    }
+    if (enemy->y > (160 - enemy->height)) {
+        enemy->y = 160 - enemy->height;
+    }
+}
+
+static void resolveBossOverlapWithPlayer(
+    Enemy *enemy,
+    const Player *player,
+    int playerWidth,
+    int playerHeight,
+    int pushX,
+    int pushY
+)
+{
+    if (pushX == 0 && pushY == 0) {
+        return;
+    }
+
+    GameObject playerRect = getPlayerRect(player, playerWidth, playerHeight);
+    for (int i = 0; i < 10; i++) {
+        GameObject enemyRect = getEnemyRect(enemy);
+        if (!isCollidingAABB(&playerRect, &enemyRect)) {
+            break;
+        }
+
+        enemy->x += pushX;
+        enemy->y += pushY;
+        clampEnemyToScreen(enemy);
+    }
+}
+
 void initAttack(Attack *attack, int width, int height, int duration)
 {
     attack->x = 0;
@@ -132,10 +186,43 @@ void updateCombat(
                 int playerCenterY = player->y + (playerHeight / 2);
                 int enemyCenterX = enemy->x + (enemy->width / 2);
                 int enemyCenterY = enemy->y + (enemy->height / 2);
+                int centerDeltaX = enemyCenterX - playerCenterX;
+                int centerDeltaY = enemyCenterY - playerCenterY;
+                int retreatDirX = signValue(centerDeltaX);
+                int retreatDirY = signValue(centerDeltaY);
 
                 player->knockbackX = (playerCenterX >= enemyCenterX) ? knockbackSpeed : -knockbackSpeed;
                 player->knockbackY = (playerCenterY >= enemyCenterY) ? knockbackSpeed : -knockbackSpeed;
                 player->knockbackTimer = knockbackFrames;
+
+                // Boss contact handling:
+                // 1) immediately separate rectangles
+                // 2) enforce a short retreat + recovery window
+                if (enemy->isBoss) {
+                    const int bossRetreatStep = 2;
+                    const int bossRetreatFrames = 6;
+
+                    // Avoid zero-vector when centers match exactly.
+                    if (retreatDirX == 0 && retreatDirY == 0) {
+                        retreatDirY = -1;
+                    }
+
+                    enemy->bossRetreatX = retreatDirX * bossRetreatStep;
+                    enemy->bossRetreatY = retreatDirY * bossRetreatStep;
+                    enemy->bossRetreatTimer = bossRetreatFrames;
+                    enemy->bossRecoverTimer = 16;
+                    enemy->bossChaseTimer = 0;
+                    enemy->bossPauseTimer = 10;
+
+                    resolveBossOverlapWithPlayer(
+                        enemy,
+                        player,
+                        playerWidth,
+                        playerHeight,
+                        enemy->bossRetreatX,
+                        enemy->bossRetreatY
+                    );
+                }
             }
 
             // Enter dead state immediately when health reaches zero.

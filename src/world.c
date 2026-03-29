@@ -108,6 +108,10 @@ static void validateRoomLayout(World *world)
         world->layoutValidationIssueCount++;
     }
 
+    if (world->bigKeyObject.active && overlapsRoomGeometry(world, &world->bigKeyObject)) {
+        world->layoutValidationIssueCount++;
+    }
+
     for (int i = 0; i < world->lockedDoorCount; i++) {
         if (world->lockedDoors[i].active && overlapsRoomGeometry(world, &world->lockedDoors[i])) {
             world->layoutValidationIssueCount++;
@@ -130,6 +134,7 @@ static void saveCurrentRoomPersistentState(World *world)
         state->toggleObstacleActive[i] = world->toggleObstacles[i].active;
     }
     state->keyActive = world->keyObject.active;
+    state->bigKeyActive = world->bigKeyObject.active;
     for (int i = 0; i < WORLD_LOCKED_DOOR_COUNT; i++) {
         state->lockedDoorActive[i] = world->lockedDoors[i].active;
     }
@@ -154,6 +159,7 @@ static void applyCurrentRoomPersistentState(World *world)
         world->toggleObstacles[i].active = state->toggleObstacleActive[i];
     }
     world->keyObject.active = state->keyActive;
+    world->bigKeyObject.active = state->bigKeyActive;
     for (int i = 0; i < WORLD_LOCKED_DOOR_COUNT; i++) {
         world->lockedDoors[i].active = state->lockedDoorActive[i];
     }
@@ -183,7 +189,9 @@ static void loadRoom0(World *world)
     // Room 2 uses passage transition only: no active goal teleporter here.
     world->goalArea = (GameObject){ .x = 190, .y = 66, .width = 18, .height = 18, .active = 0 };
     world->keyObject = (GameObject){ .x = 56, .y = 76, .width = 8, .height = 8, .active = 1 };
+    world->bigKeyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
     world->lockedDoorCount = 1;
+    world->bossDoorIndex = -1;
     // Locked door blocks the right opening until one key is spent.
     world->lockedDoors[0] = (GameObject){ .x = 212, .y = 64, .width = 8, .height = 32, .active = 1 };
     world->lockedDoors[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
@@ -235,7 +243,9 @@ static void loadRoom1(World *world)
 
     world->goalArea = (GameObject){ .x = 186, .y = 102, .width = 18, .height = 18, .active = 1 };
     world->keyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->bigKeyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
     world->lockedDoorCount = 0;
+    world->bossDoorIndex = -1;
     world->lockedDoors[0] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
     world->lockedDoors[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
@@ -288,7 +298,9 @@ static void loadRoom2(World *world)
 
     world->goalArea = (GameObject){ .x = 186, .y = 36, .width = 18, .height = 18, .active = 1 };
     world->keyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->bigKeyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
     world->lockedDoorCount = 0;
+    world->bossDoorIndex = -1;
     world->lockedDoors[0] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
     world->lockedDoors[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
@@ -319,10 +331,12 @@ static void loadRoom2(World *world)
 
 static void loadRoom3(World *world)
 {
-    // Challenge room (progression room 4): goal teleporter back to room 1.
+    // Challenge room (progression room 4):
+    // no teleporter here; progression continues through a spatial passage.
     // Sequence:
     // 1) Activate switch 0 to open the center gate into the enemy zone.
-    // 2) Use the room key to open the locked gate into the goal chamber.
+    // 2) Use the room key to open the locked gate into the right chamber.
+    // 3) Collect the big key, then continue to room 5.
     world->interactiveObjects[0] = (GameObject){ .x = 36, .y = 104, .width = 16, .height = 16, .active = 0 };
     // Second switch is intentionally removed for clarity in this room.
     // Keep slot 1 pre-activated and non-visible so generic logic still works.
@@ -333,8 +347,8 @@ static void loadRoom3(World *world)
     // Gate 1 is disabled in Room 4; locked door now owns this progression gate.
     world->toggleObstacles[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
-    // Closed room bounds: no spatial passage in this room.
-    world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 200, .height = 8, .active = 1 };   // top
+    // Top wall has one opening that leads to room 5.
+    world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 160, .height = 8, .active = 1 };   // top-left
     world->roomObstacles[1] = (GameObject){ .x = 20, .y = 132, .width = 200, .height = 8, .active = 1 };  // bottom
     world->roomObstacles[2] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };   // left
     world->roomObstacles[3] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };  // right
@@ -342,13 +356,17 @@ static void loadRoom3(World *world)
     world->roomObstacles[4] = (GameObject){ .x = 140, .y = 64, .width = 72, .height = 12, .active = 1 };
     // Extra center pillar tightens navigation in the final room.
     world->roomObstacles[5] = (GameObject){ .x = 72, .y = 64, .width = 20, .height = 48, .active = 1 };
-    world->roomObstacles[6] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->roomObstacles[6] = (GameObject){ .x = 204, .y = 20, .width = 16, .height = 8, .active = 1 };   // top-right
 
-    world->goalArea = (GameObject){ .x = 184, .y = 36, .width = 18, .height = 18, .active = 1 };
+    // Teleporter goal is removed from room 4 to keep only spatial transitions.
+    world->goalArea = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
     // Place the key closer to the upper-right route so the objective is
     // easier to read, while still inside enemy patrol pressure.
     world->keyObject = (GameObject){ .x = 154, .y = 80, .width = 8, .height = 8, .active = 1 };
+    // Big key keeps normal key size/shape and is isolated in the chamber.
+    world->bigKeyObject = (GameObject){ .x = 188, .y = 40, .width = 8, .height = 8, .active = 1 };
     world->lockedDoorCount = 1;
+    world->bossDoorIndex = -1;
     // Place the locked door on the goal-chamber entry lane so it becomes
     // a required gate instead of a side obstacle.
     world->lockedDoors[0] = (GameObject){ .x = 140, .y = 28, .width = 12, .height = 36, .active = 1 };
@@ -363,13 +381,13 @@ static void loadRoom3(World *world)
     world->enemyMoveRange = 26;
     world->enemyMoveAxis = ENEMY_MOVE_AXIS_Y;
 
-    // No spatial exits in this room.
+    // Spatial exit to room 5 through the top opening.
     world->doorZones[0] = (DoorZone){
-        .zone = { .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 },
-        .targetRoomIndex = 0,
-        .targetSpawnX = 0,
-        .targetSpawnY = 0,
-        .active = 0
+        .zone = { .x = 180, .y = 0, .width = 24, .height = 24, .active = 1 },
+        .targetRoomIndex = 4,
+        .targetSpawnX = 186,
+        .targetSpawnY = 118,
+        .active = 1
     };
     world->doorZones[1] = (DoorZone){
         .zone = { .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 },
@@ -382,31 +400,35 @@ static void loadRoom3(World *world)
 
 static void loadRoom4(World *world)
 {
-    // Pressure room (progression room 5):
-    // the player must activate two switches in tighter lanes while an enemy
-    // patrols close to the interaction path.
-    world->interactiveObjects[0] = (GameObject){ .x = 34, .y = 108, .width = 16, .height = 16, .active = 0 };
-    world->interactiveObjects[1] = (GameObject){ .x = 168, .y = 108, .width = 16, .height = 16, .active = 0 };
+    // Pre-boss pressure room (progression room 5):
+    // this room now focuses on movement pressure + boss-door access only.
+    // Trigger mechanics are fully removed for clarity.
+    world->interactiveObjects[0] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->interactiveObjects[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
-    // Two gates shape a staged path toward the goal.
-    world->toggleObstacles[0] = (GameObject){ .x = 94, .y = 84, .width = 52, .height = 10, .active = 1 };
-    // Final gate spans from the center pillar to the right wall so it cannot
-    // be bypassed; switch 1 must be used to open the goal approach.
-    world->toggleObstacles[1] = (GameObject){ .x = 128, .y = 52, .width = 84, .height = 10, .active = 1 };
+    // Related trigger gates are removed from this room.
+    world->toggleObstacles[0] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->toggleObstacles[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
-    world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 200, .height = 8, .active = 1 };   // top
-    world->roomObstacles[1] = (GameObject){ .x = 20, .y = 132, .width = 200, .height = 8, .active = 1 };  // bottom
-    world->roomObstacles[2] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };   // left
-    world->roomObstacles[3] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };  // right
-    // Tight lane blockers that increase movement pressure.
-    world->roomObstacles[4] = (GameObject){ .x = 108, .y = 28, .width = 20, .height = 56, .active = 1 };
-    world->roomObstacles[5] = (GameObject){ .x = 108, .y = 96, .width = 20, .height = 36, .active = 1 };
-    world->roomObstacles[6] = (GameObject){ .x = 62, .y = 72, .width = 28, .height = 24, .active = 1 };
+    // Top and bottom walls each have one opening for spatial passages.
+    world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 160, .height = 8, .active = 1 };   // top-left
+    world->roomObstacles[1] = (GameObject){ .x = 204, .y = 20, .width = 16, .height = 8, .active = 1 };   // top-right
+    world->roomObstacles[2] = (GameObject){ .x = 20, .y = 132, .width = 160, .height = 8, .active = 1 };  // bottom-left
+    world->roomObstacles[3] = (GameObject){ .x = 204, .y = 132, .width = 16, .height = 8, .active = 1 };  // bottom-right
+    world->roomObstacles[4] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };   // left
+    world->roomObstacles[5] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };  // right
+    // Remove the non-essential center blocker to keep the boss-door route clearer.
+    world->roomObstacles[6] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
-    world->goalArea = (GameObject){ .x = 186, .y = 34, .width = 18, .height = 18, .active = 1 };
+    // Teleporter goal is disabled here: room 5 -> room 6 now uses a physical passage.
+    world->goalArea = (GameObject){ .x = 186, .y = 34, .width = 18, .height = 18, .active = 0 };
     world->keyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
-    world->lockedDoorCount = 0;
-    world->lockedDoors[0] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->bigKeyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->lockedDoorCount = 1;
+    // Special boss door: this door blocks the boss-room teleporter lane.
+    // It can only be opened by the big key, not by normal keys.
+    world->bossDoorIndex = 0;
+    world->lockedDoors[0] = (GameObject){ .x = 180, .y = 20, .width = 24, .height = 12, .active = 1 };
     world->lockedDoors[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
     world->playerSpawnX = 32;
@@ -417,13 +439,124 @@ static void loadRoom4(World *world)
     world->enemyMoveRange = 28;
     world->enemyMoveAxis = ENEMY_MOVE_AXIS_Y;
 
-    // No spatial exits in this room (goal transition room).
+    // Spatial exit to room 6 through the top wall opening.
     world->doorZones[0] = (DoorZone){
-        .zone = { .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 },
-        .targetRoomIndex = 0,
-        .targetSpawnX = 0,
-        .targetSpawnY = 0,
-        .active = 0
+        .zone = { .x = 180, .y = 0, .width = 24, .height = 24, .active = 1 },
+        .targetRoomIndex = 5,
+        .targetSpawnX = 186,
+        .targetSpawnY = 118,
+        .active = 1
+    };
+    world->doorZones[1] = (DoorZone){
+        .zone = { .x = 180, .y = 136, .width = 24, .height = 24, .active = 1 },
+        .targetRoomIndex = 3,
+        .targetSpawnX = 186,
+        .targetSpawnY = 34,
+        .active = 1
+    };
+}
+
+static void loadRoom5(World *world)
+{
+    // Boss room (progression room 6):
+    // open combat layout with one simple center obstacle.
+    world->interactiveObjects[0] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 1 };
+    world->interactiveObjects[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 1 };
+
+    world->toggleObstacles[0] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->toggleObstacles[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+
+    // Top wall has an opening to room 7; this opening is blocked by gate [6]
+    // until the room enemy (boss placeholder) is defeated.
+    world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 88, .height = 8, .active = 1 };    // top-left
+    world->roomObstacles[1] = (GameObject){ .x = 132, .y = 20, .width = 88, .height = 8, .active = 1 };   // top-right
+    // Bottom wall has one opening aligned with room 5's top opening.
+    world->roomObstacles[2] = (GameObject){ .x = 20, .y = 132, .width = 160, .height = 8, .active = 1 };  // bottom-left
+    world->roomObstacles[3] = (GameObject){ .x = 204, .y = 132, .width = 16, .height = 8, .active = 1 };  // bottom-right
+    world->roomObstacles[4] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };   // left
+    world->roomObstacles[5] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };  // right
+    // Gate to room 7 (opened by updateBossRoomGate when enemy is defeated).
+    // It fully covers the transition zone while active.
+    world->roomObstacles[6] = (GameObject){ .x = 108, .y = 0, .width = 24, .height = 28, .active = 1 };
+
+    // No teleporter / goal marker in boss room.
+    world->goalArea = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->keyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->bigKeyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->lockedDoorCount = 0;
+    world->bossDoorIndex = -1;
+    world->lockedDoors[0] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->lockedDoors[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+
+    world->playerSpawnX = 110;
+    world->playerSpawnY = 112;
+    // Boss placeholder uses the existing enemy system (no new mechanics).
+    world->enemySpawnX = 110;
+    world->enemySpawnY = 64;
+    world->enemyMaxHealth = 5;
+    world->enemyMoveRange = 0;
+    world->enemyMoveAxis = ENEMY_MOVE_AXIS_X;
+
+    // Room 6 -> room 7 passage (only usable once gate obstacle [6] is opened).
+    world->doorZones[0] = (DoorZone){
+        .zone = { .x = 108, .y = 0, .width = 24, .height = 24, .active = 1 },
+        .targetRoomIndex = 6,
+        .targetSpawnX = 110,
+        .targetSpawnY = 118,
+        .active = 1
+    };
+    // Return passage to room 5.
+    world->doorZones[1] = (DoorZone){
+        .zone = { .x = 180, .y = 136, .width = 24, .height = 24, .active = 1 },
+        .targetRoomIndex = 4,
+        .targetSpawnX = 186,
+        .targetSpawnY = 34,
+        .active = 1
+    };
+}
+
+static void loadRoom6(World *world)
+{
+    // Room 7 (post-boss placeholder):
+    // simple transition room kept minimal for current progression testing.
+    world->interactiveObjects[0] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 1 };
+    world->interactiveObjects[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 1 };
+
+    world->toggleObstacles[0] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->toggleObstacles[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+
+    world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 200, .height = 8, .active = 1 };   // top
+    world->roomObstacles[1] = (GameObject){ .x = 20, .y = 132, .width = 88, .height = 8, .active = 1 };   // bottom-left
+    world->roomObstacles[2] = (GameObject){ .x = 132, .y = 132, .width = 88, .height = 8, .active = 1 };  // bottom-right
+    world->roomObstacles[3] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };   // left
+    world->roomObstacles[4] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };  // right
+    world->roomObstacles[5] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->roomObstacles[6] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+
+    // Keep existing win system active in the final room.
+    world->goalArea = (GameObject){ .x = 110, .y = 72, .width = 20, .height = 16, .active = 1 };
+    world->keyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->bigKeyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->lockedDoorCount = 0;
+    world->bossDoorIndex = -1;
+    world->lockedDoors[0] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->lockedDoors[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+
+    world->playerSpawnX = 110;
+    world->playerSpawnY = 114;
+    world->enemySpawnX = 0;
+    world->enemySpawnY = 0;
+    world->enemyMaxHealth = 0;
+    world->enemyMoveRange = 0;
+    world->enemyMoveAxis = ENEMY_MOVE_AXIS_X;
+
+    // Return passage to room 6.
+    world->doorZones[0] = (DoorZone){
+        .zone = { .x = 108, .y = 136, .width = 24, .height = 24, .active = 1 },
+        .targetRoomIndex = 5,
+        .targetSpawnX = 110,
+        .targetSpawnY = 34,
+        .active = 1
     };
     world->doorZones[1] = (DoorZone){
         .zone = { .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 },
@@ -447,7 +580,9 @@ void initWorld(World *world)
     world->doorCount = WORLD_DOOR_COUNT;
     world->interactionRange = 10;
     world->lockedDoorCount = 0;
+    world->bossDoorIndex = -1;
     world->keyCount = 0;
+    world->hasBigKey = 0;
     world->currentRoomIndex = 0;
     world->hasWon = 0;
     world->requestFullPlayfieldRedraw = 1;
@@ -461,6 +596,7 @@ void initWorld(World *world)
             world->roomStates[roomIndex].toggleObstacleActive[i] = 0;
         }
         world->roomStates[roomIndex].keyActive = 0;
+        world->roomStates[roomIndex].bigKeyActive = 0;
         for (int i = 0; i < WORLD_LOCKED_DOOR_COUNT; i++) {
             world->roomStates[roomIndex].lockedDoorActive[i] = 0;
         }
@@ -483,7 +619,8 @@ void loadWorldRoom(World *world, int roomIndex)
     world->currentRoomIndex = roomIndex;
 
     // Progression order:
-    // 0 = intro -> 1 = interaction -> 2 = puzzle -> 3 = challenge -> 4 = pressure.
+    // 0 = intro -> 1 = interaction -> 2 = puzzle -> 3 = challenge
+    // -> 4 = pre-boss room -> 5 = boss room -> 6 = post-boss room.
     // Room builders stay separate so layouts remain easy to tune.
     if (roomIndex == 0) {
         loadRoom1(world);
@@ -493,8 +630,12 @@ void loadWorldRoom(World *world, int roomIndex)
         loadRoom2(world);
     } else if (roomIndex == 3) {
         loadRoom3(world);
-    } else {
+    } else if (roomIndex == 4) {
         loadRoom4(world);
+    } else if (roomIndex == 5) {
+        loadRoom5(world);
+    } else {
+        loadRoom6(world);
     }
 
     // Apply per-room persistent interaction/obstacle states.
@@ -623,9 +764,32 @@ void updateWorldWinState(
         return;
     }
 
+    if (!world->goalArea.active) {
+        return;
+    }
+
     GameObject playerRect = getPlayerRect(player, playerWidth, playerHeight);
     if (isCollidingAABB(&playerRect, &world->goalArea)) {
+        // Final room goal is locked until the big key has been collected.
+        if ((world->currentRoomIndex == (world->roomCount - 1)) && !world->hasBigKey) {
+            return;
+        }
         world->hasWon = 1;
+    }
+}
+
+void updateBossRoomGate(World *world, int bossAlive)
+{
+    // Room index 5 is the boss room.
+    if (world->currentRoomIndex != 5) {
+        return;
+    }
+
+    // Gate is obstacle slot [6] in loadRoom5.
+    int shouldBlockPassage = bossAlive ? 1 : 0;
+    if (world->roomObstacles[6].active != shouldBlockPassage) {
+        world->roomObstacles[6].active = shouldBlockPassage;
+        world->requestFullPlayfieldRedraw = 1;
     }
 }
 
@@ -650,10 +814,22 @@ void updateWorldKeyDoor(
         changedState = 1;
     }
 
+    // Collect the big key on touch (single-run progression item).
+    if (world->bigKeyObject.active && isCollidingAABB(&playerRect, &world->bigKeyObject)) {
+        world->bigKeyObject.active = 0;
+        world->hasBigKey = 1;
+        changedState = 1;
+    }
+
     // Spend one key to open one nearby locked door.
     if (world->keyCount > 0) {
         for (int i = 0; i < world->lockedDoorCount; i++) {
             if (!world->lockedDoors[i].active) {
+                continue;
+            }
+
+            // Big boss door cannot be opened with normal keys.
+            if (i == world->bossDoorIndex) {
                 continue;
             }
 
@@ -663,6 +839,17 @@ void updateWorldKeyDoor(
                 changedState = 1;
                 break;
             }
+        }
+    }
+
+    // Big key opens only the special boss door.
+    if (world->hasBigKey && world->bossDoorIndex >= 0 && world->bossDoorIndex < world->lockedDoorCount) {
+        int doorIndex = world->bossDoorIndex;
+
+        if (world->lockedDoors[doorIndex].active &&
+            isPlayerNearObject(player, playerWidth, playerHeight, &world->lockedDoors[doorIndex], 2)) {
+            world->lockedDoors[doorIndex].active = 0;
+            changedState = 1;
         }
     }
 

@@ -7,7 +7,7 @@
 #define WORLD_ROOM_OBSTACLE_COUNT 7
 #define WORLD_LOCKED_DOOR_COUNT 2
 #define WORLD_DOOR_COUNT 2
-#define WORLD_ROOM_COUNT 5
+#define WORLD_ROOM_COUNT 7
 
 // Generic rectangle/object used for world layout and collision.
 typedef struct {
@@ -35,6 +35,7 @@ typedef struct {
     int interactiveActive[WORLD_INTERACTIVE_COUNT];
     int toggleObstacleActive[WORLD_INTERACTIVE_COUNT];
     int keyActive;
+    int bigKeyActive;
     int lockedDoorActive[WORLD_LOCKED_DOOR_COUNT];
 } RoomPersistentState;
 
@@ -44,6 +45,7 @@ typedef struct {
     GameObject toggleObstacles[WORLD_INTERACTIVE_COUNT];
     GameObject roomObstacles[WORLD_ROOM_OBSTACLE_COUNT];
     GameObject keyObject;
+    GameObject bigKeyObject;
     GameObject lockedDoors[WORLD_LOCKED_DOOR_COUNT];
     GameObject goalArea;
     DoorZone doorZones[WORLD_DOOR_COUNT];
@@ -56,7 +58,9 @@ typedef struct {
     int doorCount;
     int interactionRange;
     int lockedDoorCount;
+    int bossDoorIndex;
     int keyCount;
+    int hasBigKey;
     int hasWon;
     // Debug-oriented: number of invalid layout placements detected
     // when the current room was initialized.
@@ -115,6 +119,8 @@ void updateWorldWinState(
     int playerWidth,
     int playerHeight
 );
+
+void updateBossRoomGate(World *world, int bossAlive);
 
 int checkDoorZoneTransition(
     const World *world,

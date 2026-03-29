@@ -2,7 +2,7 @@
 
 # Next Action
 
-Improve player guidance through room layout
+Adjust boss movement to fit directional combat
 
 ## Overview
 
@@ -249,22 +249,52 @@ Validation:
 ## Phase 11 – Core Polish Preparation
 
 
-Status: ⏳ In progress
+Status: ✅ Completed
 
 Tasks: 
 - [x] Add a simple key and locked door mechanic
 - [x] Improve clarity of objectives through visual feedback
 - [x] Ensure important interactive elements are visually distinct
 - [x] Place key in a risky situation
-- [ ] Improve consistency of player understanding (what to do / where to go)
-- [ ] Refine game loop clarity (start → play → win/lose → restart)
+- [x] Improve consistency of player understanding (what to do / where to go)
+- [x] Refine game loop clarity (start → play → win/lose → restart)
 
 Validation:
 - [x] Player can understand objectives without explanation
 - [x] Key gameplay elements (key, door, goal, trigger) are clearly identifiable
 - [x] Gameplay includes simple risk/reward situations
-- [ ] Game progression feels natural and understandable
-- [ ] Game loop is clear and complete
+- [x] Game progression feels natural and understandable
+- [x] Game loop is clear and complete
+
+---
+
+## Phase 12 – Dungeon Structure
+
+Status: ⏳ In progress
+
+Tasks:
+
+- [x] Add big key system
+- [x] Lock final door behind big key
+- [x] Replace teleport transition with spatial passage
+- [x] Fix big key visual consistency
+- [x] Enforce R4 → R5 progression using big key
+- [x] Refine Room 5 layout (remove useless elements)
+- [x] Add dedicated boss room
+- [x] Add simple boss entity
+- [ ] Add reward room after boss (R7)
+- [x] Add boss gate (block exit until boss defeated)
+- [ ] Unlock post-boss room on boss defeat
+- [ ] Add dungeon reward and victory condition
+- [ ] Rebalance simple boss behavior
+
+Validation:
+
+- [ ] Dungeon has a clear structure (exploration → boss → reward)
+- [ ] Final progression requires big key
+- [ ] Boss encounter feels distinct from normal enemies
+- [ ] Victory is tied to dungeon completion
+- [ ] Boss encounter feels fair and readable
 
 ---
 
@@ -355,6 +385,15 @@ Validation:
 - Win / Lose states with restart
 - Key and door mechanic
 - Introduction of risk-based gameplay (key under pressure)
+- Improved implicit player guidance through room layout
+- Clarified progression without adding text or UI
+- Completed core prototype polish for readability and flow
+
+- Core dungeon loop established (exploration + keys + progression)
+- Defined pre-boss room structure (R5)
+- Established clear dungeon progression toward boss
+- Added first boss room structure
+- Added boss-gated exit logic
   
 # Project Architecture
 

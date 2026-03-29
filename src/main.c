@@ -159,6 +159,7 @@ int main(void)
 
                 updateEnemyMovement(
                     &enemy,
+                    &player,
                     world.roomObstacles,
                     world.roomObstacleCount,
                     world.toggleObstacles,
@@ -167,6 +168,7 @@ int main(void)
 
                 tryStartPlayerAttack(&attack, &player, keysPressed, playerWidth, playerHeight);
                 updateCombat(&player, &enemy, &attack, playerWidth, playerHeight);
+                updateBossRoomGate(&world, enemy.active);
 
                 // Death stops gameplay and switches to the dedicated dead state.
                 if (player.isDead) {

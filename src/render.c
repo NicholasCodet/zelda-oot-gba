@@ -27,11 +27,17 @@
 #define COLOR_LOCKED_DOOR RGB5(14, 8, 3)
 #define COLOR_LOCKED_DOOR_BORDER RGB5(24, 18, 8)
 #define COLOR_LOCKED_DOOR_LOCK RGB5(31, 31, 0)
+#define COLOR_BOSS_DOOR RGB5(10, 4, 14)
+#define COLOR_BOSS_DOOR_BORDER RGB5(31, 0, 31)
+#define COLOR_BOSS_DOOR_LOCK RGB5(31, 31, 31)
 #define COLOR_KEY RGB5(31, 31, 0)
 #define COLOR_KEY_BORDER RGB5(31, 20, 0)
+#define COLOR_BIG_KEY RGB5(31, 0, 24)
+#define COLOR_BIG_KEY_BORDER RGB5(31, 31, 31)
 #define COLOR_GOAL RGB5(0, 20, 28)
 #define COLOR_GOAL_BORDER RGB5(31, 31, 31)
 #define COLOR_GOAL_WIN RGB5(0, 28, 10)
+#define COLOR_GOAL_LOCKED RGB5(8, 8, 8)
 #define COLOR_ENEMY RGB5(31, 3, 3)
 #define COLOR_ENEMY_BORDER RGB5(31, 28, 0)
 #define COLOR_ENEMY_CORE RGB5(20, 0, 0)
@@ -40,6 +46,14 @@
 #define COLOR_ENEMY_FLASH_BORDER RGB5(31, 16, 0)
 #define COLOR_ENEMY_FLASH_CORE RGB5(31, 20, 0)
 #define COLOR_ENEMY_FLASH_EYE RGB5(31, 0, 0)
+#define COLOR_BOSS RGB5(22, 6, 31)
+#define COLOR_BOSS_BORDER RGB5(31, 31, 31)
+#define COLOR_BOSS_CORE RGB5(10, 0, 18)
+#define COLOR_BOSS_EYE RGB5(31, 6, 18)
+#define COLOR_BOSS_FLASH RGB5(31, 24, 31)
+#define COLOR_BOSS_FLASH_BORDER RGB5(31, 31, 0)
+#define COLOR_BOSS_FLASH_CORE RGB5(31, 10, 24)
+#define COLOR_BOSS_FLASH_EYE RGB5(31, 31, 31)
 #define COLOR_SWITCH_BORDER RGB5(31, 31, 31)
 #define COLOR_SWITCH_CORE_ON RGB5(31, 31, 31)
 #define COLOR_SWITCH_CORE_OFF RGB5(6, 6, 6)
@@ -302,6 +316,23 @@ static void drawKeyObject(const GameObject *keyObject)
     }
 }
 
+// Big key keeps the same shape language as normal keys, with only a color change.
+static void drawBigKeyObject(const GameObject *bigKeyObject)
+{
+    drawOutlinedRect(
+        bigKeyObject->x,
+        bigKeyObject->y,
+        bigKeyObject->width,
+        bigKeyObject->height,
+        COLOR_BIG_KEY,
+        COLOR_BIG_KEY_BORDER
+    );
+
+    if (bigKeyObject->width >= 6 && bigKeyObject->height >= 6) {
+        drawPlayfieldRect(bigKeyObject->x + 2, bigKeyObject->y + 2, 2, 2, COLOR_BG);
+    }
+}
+
 // Locked door has a warmer block shape with a bright "lock" marker.
 static void drawLockedDoorObject(const GameObject *doorObject)
 {
@@ -318,6 +349,26 @@ static void drawLockedDoorObject(const GameObject *doorObject)
         int lockX = doorObject->x + (doorObject->width / 2) - 1;
         int lockY = doorObject->y + (doorObject->height / 2) - 2;
         drawPlayfieldRect(lockX, lockY, 2, 4, COLOR_LOCKED_DOOR_LOCK);
+    }
+}
+
+// Boss door uses a more distinct color/marker than normal key doors.
+static void drawBossDoorObject(const GameObject *doorObject)
+{
+    drawOutlinedRect(
+        doorObject->x,
+        doorObject->y,
+        doorObject->width,
+        doorObject->height,
+        COLOR_BOSS_DOOR,
+        COLOR_BOSS_DOOR_BORDER
+    );
+
+    if (doorObject->width >= 8 && doorObject->height >= 8) {
+        int centerX = doorObject->x + (doorObject->width / 2) - 1;
+        int centerY = doorObject->y + (doorObject->height / 2) - 1;
+        drawPlayfieldRect(centerX, centerY - 2, 2, 6, COLOR_BOSS_DOOR_LOCK);
+        drawPlayfieldRect(centerX - 2, centerY, 6, 2, COLOR_BOSS_DOOR_LOCK);
     }
 }
 
@@ -364,7 +415,13 @@ static void drawInteractiveObject(const World *world, int index)
 static void drawGoalArea(const World *world)
 {
     GameObject goalVisualRect = getGoalVisualRect(world);
+    int isFinalRoom = (world->currentRoomIndex == (world->roomCount - 1));
+    int finalGoalLocked = isFinalRoom && !world->hasBigKey;
     u16 goalColor = world->hasWon ? COLOR_GOAL_WIN : COLOR_GOAL;
+
+    if (finalGoalLocked) {
+        goalColor = COLOR_GOAL_LOCKED;
+    }
 
     // Solid larger platform so the goal is easy to identify from far away.
     drawPlayfieldRect(
@@ -387,6 +444,13 @@ static void drawGoalArea(const World *world)
     // Simple cross mark makes the goal shape recognizable without color.
     drawPlayfieldRect(goalVisualRect.x + (goalVisualRect.width / 2) - 1, goalVisualRect.y + 2, 2, goalVisualRect.height - 4, COLOR_GOAL_BORDER);
     drawPlayfieldRect(goalVisualRect.x + 2, goalVisualRect.y + (goalVisualRect.height / 2) - 1, goalVisualRect.width - 4, 2, COLOR_GOAL_BORDER);
+
+    // Keep a visible lock marker on the final goal until the big key is collected.
+    if (finalGoalLocked) {
+        int lockX = goalVisualRect.x + (goalVisualRect.width / 2) - 2;
+        int lockY = goalVisualRect.y + (goalVisualRect.height / 2) - 2;
+        drawPlayfieldRect(lockX, lockY, 4, 4, COLOR_LOCKED_DOOR_LOCK);
+    }
 }
 
 static void drawEnemyRect(const Enemy *enemy)
@@ -396,6 +460,13 @@ static void drawEnemyRect(const Enemy *enemy)
     u16 enemyBorderColor = enemyFlashOn ? COLOR_ENEMY_FLASH_BORDER : COLOR_ENEMY_BORDER;
     u16 enemyCoreColor = enemyFlashOn ? COLOR_ENEMY_FLASH_CORE : COLOR_ENEMY_CORE;
     u16 enemyEyeColor = enemyFlashOn ? COLOR_ENEMY_FLASH_EYE : COLOR_ENEMY_EYE;
+
+    if (enemy->isBoss) {
+        enemyBodyColor = enemyFlashOn ? COLOR_BOSS_FLASH : COLOR_BOSS;
+        enemyBorderColor = enemyFlashOn ? COLOR_BOSS_FLASH_BORDER : COLOR_BOSS_BORDER;
+        enemyCoreColor = enemyFlashOn ? COLOR_BOSS_FLASH_CORE : COLOR_BOSS_CORE;
+        enemyEyeColor = enemyFlashOn ? COLOR_BOSS_FLASH_EYE : COLOR_BOSS_EYE;
+    }
 
     drawOutlinedRect(
         enemy->x,
@@ -473,12 +544,20 @@ static void redrawSceneRegion(const GameObject *region, const World *world, cons
 
     for (int i = 0; i < world->lockedDoorCount; i++) {
         if (world->lockedDoors[i].active && isCollidingAABB(region, &world->lockedDoors[i])) {
-            drawLockedDoorObject(&world->lockedDoors[i]);
+            if (i == world->bossDoorIndex) {
+                drawBossDoorObject(&world->lockedDoors[i]);
+            } else {
+                drawLockedDoorObject(&world->lockedDoors[i]);
+            }
         }
     }
 
     if (world->keyObject.active && isCollidingAABB(region, &world->keyObject)) {
         drawKeyObject(&world->keyObject);
+    }
+
+    if (world->bigKeyObject.active && isCollidingAABB(region, &world->bigKeyObject)) {
+        drawBigKeyObject(&world->bigKeyObject);
     }
 
     if (enemy->active) {
