@@ -30,6 +30,15 @@ typedef struct Player {
     int knockbackX;
     int knockbackY;
     int knockbackTimer;
+
+    // Simple dash state (triggered with L).
+    int dashX;
+    int dashY;
+    int dashTimer;
+    int dashDuration;
+    int dashSpeed;
+    int dashCooldownTimer;
+    int dashCooldownFrames;
 } Player;
 
 void initPlayer(
@@ -48,6 +57,7 @@ GameObject getPlayerRect(const Player *player, int width, int height);
 void updatePlayerMovement(
     Player *player,
     u16 keys,
+    u16 keysPressed,
     int rectWidth,
     int rectHeight,
     const GameObject *roomObstacles,

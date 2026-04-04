@@ -2,7 +2,7 @@
 
 # Next Action
 
-Improve room transitions for smoother flow
+Fix attack rendering regression caused by roll/dash
 
 ## Overview
 
@@ -312,7 +312,8 @@ Tasks:
 - [x] Fix unfair chaser contact behavior
 - [ ] Improve boss feedback (damage and reactions)
 - [x] Improve reward feedback (collection moment)
-- [ ] Smooth transitions between rooms
+- [x] Smooth transitions between rooms
+- [x] Add roll/dash ability
 - [ ] Ensure consistent behavior across systems
 
 Validation:

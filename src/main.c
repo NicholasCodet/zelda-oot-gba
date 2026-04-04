@@ -15,6 +15,46 @@ typedef enum {
     GAME_STATE_DEAD
 } GameState;
 
+// Orient and slightly nudge the player inside the room after a door transition.
+// This makes entry position/direction feel consistent with the doorway side.
+static void applyDoorEntryPose(Player *player, int playerWidth, int playerHeight)
+{
+    const int edgeThreshold = 24;
+    const int inwardNudge = 3;
+    const int maxX = 240 - playerWidth;
+    const int maxY = 160 - playerHeight;
+
+    if (player->x <= edgeThreshold) {
+        player->x += inwardNudge;
+        player->direction = DIRECTION_RIGHT;
+    } else if (player->x >= (maxX - edgeThreshold)) {
+        player->x -= inwardNudge;
+        player->direction = DIRECTION_LEFT;
+    } else if (player->y <= edgeThreshold) {
+        player->y += inwardNudge;
+        player->direction = DIRECTION_DOWN;
+    } else if (player->y >= (maxY - edgeThreshold)) {
+        player->y -= inwardNudge;
+        player->direction = DIRECTION_UP;
+    } else {
+        player->direction = DIRECTION_DOWN;
+    }
+
+    // Clamp once after nudge.
+    if (player->x < 0) {
+        player->x = 0;
+    }
+    if (player->x > maxX) {
+        player->x = maxX;
+    }
+    if (player->y < 0) {
+        player->y = 0;
+    }
+    if (player->y > maxY) {
+        player->y = maxY;
+    }
+}
+
 // Reset the run to a clean dungeon start (room 1, full player health,
 // default room puzzle states, fresh enemy/attack/render state).
 static void resetDungeonRun(
@@ -100,6 +140,7 @@ int main(void)
 
     GameState gameState = GAME_STATE_PLAYING;
     int endScreenDrawn = 0;
+    int roomEntryStabilizeTimer = 0;
 
     while (1) {
         VBlankIntrWait();
@@ -143,11 +184,20 @@ int main(void)
 
             case GAME_STATE_PLAYING:
             default:
+                // Short pause after room swaps to reduce disorientation
+                // and prevent immediate accidental re-trigger of a doorway.
+                if (roomEntryStabilizeTimer > 0) {
+                    roomEntryStabilizeTimer--;
+                    renderFrame(&world, &player, &enemy, &attack, playerWidth, playerHeight, &renderState);
+                    break;
+                }
+
                 tickPlayerInvulnerability(&player);
 
                 updatePlayerMovement(
                     &player,
                     keys,
+                    keysPressed,
                     playerWidth,
                     playerHeight,
                     world.roomObstacles,
@@ -169,6 +219,13 @@ int main(void)
 
                 // Detect enemy death transitions to trigger simple item drops.
                 int enemyWasActive = enemy.active;
+                // Keep attack rendering stable with dash:
+                // when attack starts, stop any ongoing dash movement first.
+                if (keysPressed & KEY_B) {
+                    player.dashTimer = 0;
+                    player.dashX = 0;
+                    player.dashY = 0;
+                }
                 tryStartPlayerAttack(&attack, &player, keysPressed, playerWidth, playerHeight);
                 updateCombat(&player, &enemy, &attack, playerWidth, playerHeight);
                 if (enemyWasActive && !enemy.active) {
@@ -228,16 +285,18 @@ int main(void)
                         if (useDoorSpawn) {
                             player.x = transitionSpawnX;
                             player.y = transitionSpawnY;
+                            applyDoorEntryPose(&player, playerWidth, playerHeight);
                         } else {
                             player.x = world.playerSpawnX;
                             player.y = world.playerSpawnY;
+                            player.direction = DIRECTION_DOWN;
                         }
 
-                        player.direction = DIRECTION_DOWN;
                         player.invulnerabilityTimer = 0;
                         player.knockbackX = 0;
                         player.knockbackY = 0;
                         player.knockbackTimer = 0;
+                        roomEntryStabilizeTimer = 6;
 
                         // Reset enemy and attack state for the new room.
                         initEnemy(

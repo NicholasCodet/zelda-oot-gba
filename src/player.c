@@ -22,6 +22,13 @@ void initPlayer(
     player->knockbackX = 0;
     player->knockbackY = 0;
     player->knockbackTimer = 0;
+    player->dashX = 0;
+    player->dashY = 0;
+    player->dashTimer = 0;
+    player->dashDuration = 5;
+    player->dashSpeed = 3;
+    player->dashCooldownTimer = 0;
+    player->dashCooldownFrames = 24;
 }
 
 void tickPlayerInvulnerability(Player *player)
@@ -47,6 +54,7 @@ GameObject getPlayerRect(const Player *player, int width, int height)
 void updatePlayerMovement(
     Player *player,
     u16 keys,
+    u16 keysPressed,
     int rectWidth,
     int rectHeight,
     const GameObject *roomObstacles,
@@ -64,6 +72,10 @@ void updatePlayerMovement(
     int moveX = 0;
     int moveY = 0;
 
+    if (player->dashCooldownTimer > 0) {
+        player->dashCooldownTimer--;
+    }
+
     // Apply knockback movement first.
     // While active, normal directional movement is temporarily disabled.
     if (player->knockbackTimer > 0) {
@@ -71,22 +83,51 @@ void updatePlayerMovement(
         moveY = player->knockbackY;
         player->knockbackTimer--;
     } else {
-        // Move one pixel per frame while a direction is held.
-        if (keys & KEY_UP) {
-            moveY -= player->speed;
-            player->direction = DIRECTION_UP;
-        }
-        if (keys & KEY_DOWN) {
-            moveY += player->speed;
-            player->direction = DIRECTION_DOWN;
-        }
-        if (keys & KEY_LEFT) {
-            moveX -= player->speed;
-            player->direction = DIRECTION_LEFT;
-        }
-        if (keys & KEY_RIGHT) {
-            moveX += player->speed;
-            player->direction = DIRECTION_RIGHT;
+        // Continue an active dash.
+        if (player->dashTimer > 0) {
+            moveX = player->dashX;
+            moveY = player->dashY;
+            player->dashTimer--;
+        } else {
+            // Move one pixel per frame while a direction is held.
+            if (keys & KEY_UP) {
+                moveY -= player->speed;
+                player->direction = DIRECTION_UP;
+            }
+            if (keys & KEY_DOWN) {
+                moveY += player->speed;
+                player->direction = DIRECTION_DOWN;
+            }
+            if (keys & KEY_LEFT) {
+                moveX -= player->speed;
+                player->direction = DIRECTION_LEFT;
+            }
+            if (keys & KEY_RIGHT) {
+                moveX += player->speed;
+                player->direction = DIRECTION_RIGHT;
+            }
+
+            // Start a dash in the current facing direction.
+            // Keep the logic simple: short burst + short cooldown.
+            if ((keysPressed & KEY_L) && !(keysPressed & KEY_B) && player->dashCooldownTimer == 0) {
+                player->dashX = 0;
+                player->dashY = 0;
+
+                if (player->direction == DIRECTION_UP) {
+                    player->dashY = -player->dashSpeed;
+                } else if (player->direction == DIRECTION_DOWN) {
+                    player->dashY = player->dashSpeed;
+                } else if (player->direction == DIRECTION_LEFT) {
+                    player->dashX = -player->dashSpeed;
+                } else {
+                    player->dashX = player->dashSpeed;
+                }
+
+                moveX = player->dashX;
+                moveY = player->dashY;
+                player->dashTimer = player->dashDuration - 1;
+                player->dashCooldownTimer = player->dashCooldownFrames;
+            }
         }
     }
 
