@@ -46,7 +46,8 @@ static void resetDungeonRun(
         world->enemyMaxHealth,
         world->enemyMoveRange,
         enemyMoveSpeed,
-        world->enemyMoveAxis
+        world->enemyMoveAxis,
+        world->enemyType
     );
 
     initAttack(attack, attackWidth, attackHeight, attackDuration);
@@ -248,7 +249,8 @@ int main(void)
                             world.enemyMaxHealth,
                             world.enemyMoveRange,
                             enemyMoveSpeed,
-                            world.enemyMoveAxis
+                            world.enemyMoveAxis,
+                            world.enemyType
                         );
                         initAttack(&attack, attackWidth, attackHeight, attackDuration);
 

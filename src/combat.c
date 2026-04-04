@@ -28,7 +28,7 @@ static void clampEnemyToScreen(Enemy *enemy)
     }
 }
 
-static void resolveBossOverlapWithPlayer(
+static void resolveEnemyOverlapWithPlayer(
     Enemy *enemy,
     const Player *player,
     int playerWidth,
@@ -195,7 +195,7 @@ void updateCombat(
                 player->knockbackY = (playerCenterY >= enemyCenterY) ? knockbackSpeed : -knockbackSpeed;
                 player->knockbackTimer = knockbackFrames;
 
-                // Boss contact handling:
+                // Boss/chaser contact handling:
                 // 1) immediately separate rectangles
                 // 2) enforce a short retreat + recovery window
                 if (enemy->isBoss) {
@@ -214,13 +214,34 @@ void updateCombat(
                     enemy->bossChaseTimer = 0;
                     enemy->bossPauseTimer = 10;
 
-                    resolveBossOverlapWithPlayer(
+                    resolveEnemyOverlapWithPlayer(
                         enemy,
                         player,
                         playerWidth,
                         playerHeight,
                         enemy->bossRetreatX,
                         enemy->bossRetreatY
+                    );
+                } else if (enemy->type == ENEMY_TYPE_CHASER) {
+                    const int chaserRetreatStep = 2;
+                    const int chaserRetreatFrames = 5;
+
+                    if (retreatDirX == 0 && retreatDirY == 0) {
+                        retreatDirY = -1;
+                    }
+
+                    enemy->chaserRetreatX = retreatDirX * chaserRetreatStep;
+                    enemy->chaserRetreatY = retreatDirY * chaserRetreatStep;
+                    enemy->chaserRetreatTimer = chaserRetreatFrames;
+                    enemy->chaserRecoverTimer = 12;
+
+                    resolveEnemyOverlapWithPlayer(
+                        enemy,
+                        player,
+                        playerWidth,
+                        playerHeight,
+                        enemy->chaserRetreatX,
+                        enemy->chaserRetreatY
                     );
                 }
             }

@@ -2,8 +2,7 @@
 
 # Next Action
 
-Improve combat hit feedback
-
+Improve reward collection feedback
 ## Overview
 
 This document tracks the progress of the project.
@@ -304,10 +303,12 @@ Status: ⏳ In progress
 
 Tasks:
 
-- [ ] Improve hit feedback (player and enemy)
+- [x] Improve hit feedback (player and enemy)
 - [x] Add enemy drops (hearts)
 - [x] Fix heart drop rendering blink
 - [x] Fix heart pickup visual removal
+- [x] Add enemy behavior variations
+- [x] Fix unfair chaser contact behavior
 - [ ] Improve boss feedback (damage and reactions)
 - [ ] Improve reward feedback (collection moment)
 - [ ] Smooth transitions between rooms
@@ -428,6 +429,8 @@ Validation:
 - Implemented enemy drops (hearts)
 - Fixed drop rendering issues (blink and persistence)
 - Improved gameplay feedback loop (combat → reward)
+- Fixed enemy-player contact behavior (no more sticky enemies)
+- Stabilized combat interactions across all enemy types
   
 # Project Architecture
 

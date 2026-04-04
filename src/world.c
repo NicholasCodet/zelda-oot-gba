@@ -213,6 +213,7 @@ static void loadRoom0(World *world)
     world->enemyMaxHealth = 2;
     world->enemyMoveRange = 16;
     world->enemyMoveAxis = ENEMY_MOVE_AXIS_X;
+    world->enemyType = ENEMY_TYPE_PATROL;
 
     // Single spatial door: room 2 -> room 3.
     world->doorZones[0] = (DoorZone){
@@ -266,6 +267,7 @@ static void loadRoom1(World *world)
     world->enemyMaxHealth = 1;
     world->enemyMoveRange = 4;
     world->enemyMoveAxis = ENEMY_MOVE_AXIS_X;
+    world->enemyType = ENEMY_TYPE_CHASER;
 
     // No spatial exits in this room.
     world->doorZones[0] = (DoorZone){
@@ -321,6 +323,7 @@ static void loadRoom2(World *world)
     world->enemyMaxHealth = 2;
     world->enemyMoveRange = 18;
     world->enemyMoveAxis = ENEMY_MOVE_AXIS_X;
+    world->enemyType = ENEMY_TYPE_PATROL;
 
     // Matching return passage: room 3 -> room 2.
     world->doorZones[0] = (DoorZone){
@@ -390,6 +393,7 @@ static void loadRoom3(World *world)
     world->enemyMaxHealth = 3;
     world->enemyMoveRange = 26;
     world->enemyMoveAxis = ENEMY_MOVE_AXIS_Y;
+    world->enemyType = ENEMY_TYPE_BRUTE;
 
     // Spatial exit to room 5 through the top opening.
     world->doorZones[0] = (DoorZone){
@@ -448,6 +452,7 @@ static void loadRoom4(World *world)
     world->enemyMaxHealth = 3;
     world->enemyMoveRange = 28;
     world->enemyMoveAxis = ENEMY_MOVE_AXIS_Y;
+    world->enemyType = ENEMY_TYPE_CHASER;
 
     // Spatial exit to room 6 through the top wall opening.
     world->doorZones[0] = (DoorZone){
@@ -506,6 +511,7 @@ static void loadRoom5(World *world)
     world->enemyMaxHealth = 5;
     world->enemyMoveRange = 0;
     world->enemyMoveAxis = ENEMY_MOVE_AXIS_X;
+    world->enemyType = ENEMY_TYPE_BOSS;
 
     // Room 6 -> room 7 passage (only usable once gate obstacle [6] is opened).
     world->doorZones[0] = (DoorZone){
@@ -560,6 +566,7 @@ static void loadRoom6(World *world)
     world->enemyMaxHealth = 0;
     world->enemyMoveRange = 0;
     world->enemyMoveAxis = ENEMY_MOVE_AXIS_X;
+    world->enemyType = ENEMY_TYPE_PATROL;
 
     // Return passage to room 6.
     world->doorZones[0] = (DoorZone){
@@ -598,6 +605,7 @@ void initWorld(World *world)
     world->hasWon = 0;
     world->requestFullPlayfieldRedraw = 1;
     world->heartDrop = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    world->enemyType = ENEMY_TYPE_PATROL;
     gDropRngState = 0x1A2B3C4Du;
 
     // Persistence storage is initialized once; defaults are captured

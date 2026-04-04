@@ -43,6 +43,110 @@ static int signValue(int value)
     return 0;
 }
 
+static void updateSimpleChaseMovement(
+    Enemy *enemy,
+    const Player *player,
+    const GameObject *roomObstacles,
+    int roomObstacleCount,
+    const GameObject *toggleObstacles,
+    int toggleObstacleCount,
+    int slower
+)
+{
+    if (player == 0) {
+        return;
+    }
+
+    // Brute type moves every other frame for a heavier, slower feel.
+    if (slower) {
+        enemy->behaviorTick++;
+        if ((enemy->behaviorTick & 1) == 0) {
+            return;
+        }
+    }
+
+    int step = enemy->moveSpeed;
+    int deltaX = player->x - enemy->x;
+    int deltaY = player->y - enemy->y;
+    int moveX = 0;
+    int moveY = 0;
+    const int axisAlignThreshold = 2;
+
+    // Axis-based chase to stay readable with 4-direction player attacks.
+    if (absoluteValue(deltaX) > axisAlignThreshold &&
+        absoluteValue(deltaX) >= absoluteValue(deltaY)) {
+        moveX = signValue(deltaX) * step;
+    } else if (absoluteValue(deltaY) > axisAlignThreshold) {
+        moveY = signValue(deltaY) * step;
+    } else if (absoluteValue(deltaX) > 0) {
+        moveX = signValue(deltaX) * step;
+    }
+
+    if (moveX != 0) {
+        int nextX = enemy->x + moveX;
+        if (!isEnemyMoveBlocked(
+                nextX,
+                enemy->y,
+                enemy,
+                roomObstacles,
+                roomObstacleCount,
+                toggleObstacles,
+                toggleObstacleCount
+            )) {
+            enemy->x = nextX;
+            return;
+        }
+
+        // Simple fallback on Y when X lane is blocked.
+        if (absoluteValue(deltaY) > axisAlignThreshold) {
+            int fallbackY = signValue(deltaY) * step;
+            int nextY = enemy->y + fallbackY;
+            if (!isEnemyMoveBlocked(
+                    enemy->x,
+                    nextY,
+                    enemy,
+                    roomObstacles,
+                    roomObstacleCount,
+                    toggleObstacles,
+                    toggleObstacleCount
+                )) {
+                enemy->y = nextY;
+            }
+        }
+    } else if (moveY != 0) {
+        int nextY = enemy->y + moveY;
+        if (!isEnemyMoveBlocked(
+                enemy->x,
+                nextY,
+                enemy,
+                roomObstacles,
+                roomObstacleCount,
+                toggleObstacles,
+                toggleObstacleCount
+            )) {
+            enemy->y = nextY;
+            return;
+        }
+
+        // Simple fallback on X when Y lane is blocked.
+        if (absoluteValue(deltaX) > axisAlignThreshold) {
+            int fallbackX = signValue(deltaX) * step;
+            int nextX = enemy->x + fallbackX;
+            if (!isEnemyMoveBlocked(
+                    nextX,
+                    enemy->y,
+                    enemy,
+                    roomObstacles,
+                    roomObstacleCount,
+                    toggleObstacles,
+                    toggleObstacleCount
+                )) {
+                enemy->x = nextX;
+            }
+        }
+    }
+}
+
 void initEnemy(
     Enemy *enemy,
     int startX,
@@ -52,7 +156,8 @@ void initEnemy(
     int maxHealth,
     int moveRange,
     int moveSpeed,
-    EnemyMoveAxis moveAxis
+    EnemyMoveAxis moveAxis,
+    EnemyType type
 )
 {
     enemy->x = startX;
@@ -60,11 +165,11 @@ void initEnemy(
     enemy->width = width;
     enemy->height = height;
     enemy->active = (maxHealth > 0) ? 1 : 0;
+    enemy->type = type;
 
     enemy->maxHealth = maxHealth;
     enemy->health = (maxHealth > 0) ? maxHealth : 0;
-    // Keep boss tagging simple for now: high-health enemies are treated as bosses.
-    enemy->isBoss = (maxHealth >= 4) ? 1 : 0;
+    enemy->isBoss = (type == ENEMY_TYPE_BOSS) ? 1 : 0;
 
     enemy->startX = startX;
     enemy->startY = startY;
@@ -78,10 +183,15 @@ void initEnemy(
     enemy->bossRetreatTimer = 0;
     enemy->bossChaseTimer = 0;
     enemy->bossPauseTimer = 0;
+    enemy->chaserRecoverTimer = 0;
+    enemy->chaserRetreatX = 0;
+    enemy->chaserRetreatY = 0;
+    enemy->chaserRetreatTimer = 0;
+    enemy->behaviorTick = 0;
 
     enemy->hitFlashTimer = 0;
-    // Boss hits stay visible a bit longer than normal enemies.
-    enemy->hitFlashDuration = enemy->isBoss ? 10 : 6;
+    // Boss and brute hits stay visible a bit longer than normal enemies.
+    enemy->hitFlashDuration = enemy->isBoss ? 10 : ((type == ENEMY_TYPE_BRUTE) ? 8 : 6);
 }
 
 GameObject getEnemyRect(const Enemy *enemy)
@@ -112,7 +222,7 @@ void updateEnemyMovement(
 
     // Boss behavior: direct chase, but with a short recovery pause after
     // successful contact to keep the fight readable and less sticky.
-    if (enemy->isBoss && player != 0) {
+    if (enemy->type == ENEMY_TYPE_BOSS && player != 0) {
         // After a successful hit on the player, briefly force the boss to
         // retreat so it cannot stay glued to the player rectangle.
         if (enemy->bossRetreatTimer > 0) {
@@ -273,6 +383,84 @@ void updateEnemyMovement(
             enemy->bossChaseTimer = 0;
         }
 
+        return;
+    }
+
+    // Chaser type: simple axis-based pursuit.
+    if (enemy->type == ENEMY_TYPE_CHASER) {
+        // Apply post-contact forced retreat to avoid sticking on the player.
+        if (enemy->chaserRetreatTimer > 0) {
+            int moved = 0;
+
+            if (enemy->chaserRetreatX != 0) {
+                int nextX = enemy->x + enemy->chaserRetreatX;
+                if (!isEnemyMoveBlocked(
+                        nextX,
+                        enemy->y,
+                        enemy,
+                        roomObstacles,
+                        roomObstacleCount,
+                        toggleObstacles,
+                        toggleObstacleCount
+                    )) {
+                    enemy->x = nextX;
+                    moved = 1;
+                }
+            }
+
+            if (enemy->chaserRetreatY != 0) {
+                int nextY = enemy->y + enemy->chaserRetreatY;
+                if (!isEnemyMoveBlocked(
+                        enemy->x,
+                        nextY,
+                        enemy,
+                        roomObstacles,
+                        roomObstacleCount,
+                        toggleObstacles,
+                        toggleObstacleCount
+                    )) {
+                    enemy->y = nextY;
+                    moved = 1;
+                }
+            }
+
+            if (moved) {
+                enemy->chaserRetreatTimer--;
+            } else {
+                enemy->chaserRetreatTimer = 0;
+            }
+
+            return;
+        }
+
+        if (enemy->chaserRecoverTimer > 0) {
+            enemy->chaserRecoverTimer--;
+            return;
+        }
+
+        updateSimpleChaseMovement(
+            enemy,
+            player,
+            roomObstacles,
+            roomObstacleCount,
+            toggleObstacles,
+            toggleObstacleCount,
+            0
+        );
+        return;
+    }
+
+    // Brute type: same readable pursuit, but slower.
+    if (enemy->type == ENEMY_TYPE_BRUTE) {
+        updateSimpleChaseMovement(
+            enemy,
+            player,
+            roomObstacles,
+            roomObstacleCount,
+            toggleObstacles,
+            toggleObstacleCount,
+            1
+        );
         return;
     }
 

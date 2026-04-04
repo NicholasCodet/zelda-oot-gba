@@ -83,6 +83,7 @@ typedef struct {
     int enemyMaxHealth;
     int enemyMoveRange;
     int enemyMoveAxis;
+    int enemyType;
 } World;
 
 void initWorld(World *world);

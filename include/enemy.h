@@ -5,6 +5,14 @@
 
 struct Player;
 
+// Simple enemy behavior variants used by rooms.
+typedef enum {
+    ENEMY_TYPE_CHASER = 0,
+    ENEMY_TYPE_PATROL = 1,
+    ENEMY_TYPE_BRUTE = 2,
+    ENEMY_TYPE_BOSS = 3
+} EnemyType;
+
 // Simple patrol axis variants for enemy movement.
 typedef enum {
     ENEMY_MOVE_AXIS_X = 0,
@@ -18,6 +26,7 @@ typedef struct {
     int width;
     int height;
     int active;
+    EnemyType type;
 
     int maxHealth;
     int health;
@@ -39,6 +48,12 @@ typedef struct {
     // Simple readable boss pacing: chase windows followed by short pauses.
     int bossChaseTimer;
     int bossPauseTimer;
+    // Chaser anti-stick state after contact.
+    int chaserRecoverTimer;
+    int chaserRetreatX;
+    int chaserRetreatY;
+    int chaserRetreatTimer;
+    int behaviorTick;
 
     // Short visual feedback timer used when the enemy is hit.
     int hitFlashTimer;
@@ -54,7 +69,8 @@ void initEnemy(
     int maxHealth,
     int moveRange,
     int moveSpeed,
-    EnemyMoveAxis moveAxis
+    EnemyMoveAxis moveAxis,
+    EnemyType type
 );
 
 GameObject getEnemyRect(const Enemy *enemy);
