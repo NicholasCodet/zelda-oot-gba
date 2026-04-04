@@ -517,8 +517,8 @@ static void loadRoom5(World *world)
 
 static void loadRoom6(World *world)
 {
-    // Room 7 (post-boss placeholder):
-    // simple transition room kept minimal for current progression testing.
+    // Room 7 (reward room):
+    // reachable from room 6 only after the boss gate opens.
     world->interactiveObjects[0] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 1 };
     world->interactiveObjects[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 1 };
 
@@ -533,10 +533,11 @@ static void loadRoom6(World *world)
     world->roomObstacles[5] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
     world->roomObstacles[6] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
-    // Keep existing win system active in the final room.
-    world->goalArea = (GameObject){ .x = 110, .y = 72, .width = 20, .height = 16, .active = 1 };
+    // Reward room win condition is collectible-based, not goal-platform based.
+    world->goalArea = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
     world->keyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
-    world->bigKeyObject = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    // Place the reward clearly at the room center.
+    world->bigKeyObject = (GameObject){ .x = 116, .y = 76, .width = 8, .height = 8, .active = 1 };
     world->lockedDoorCount = 0;
     world->bossDoorIndex = -1;
     world->lockedDoors[0] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
@@ -620,7 +621,7 @@ void loadWorldRoom(World *world, int roomIndex)
 
     // Progression order:
     // 0 = intro -> 1 = interaction -> 2 = puzzle -> 3 = challenge
-    // -> 4 = pre-boss room -> 5 = boss room -> 6 = post-boss room.
+    // -> 4 = pre-boss room -> 5 = boss room -> 6 = reward room.
     // Room builders stay separate so layouts remain easy to tune.
     if (roomIndex == 0) {
         loadRoom1(world);
@@ -814,10 +815,16 @@ void updateWorldKeyDoor(
         changedState = 1;
     }
 
-    // Collect the big key on touch (single-run progression item).
+    // Collect the big key on touch.
     if (world->bigKeyObject.active && isCollidingAABB(&playerRect, &world->bigKeyObject)) {
         world->bigKeyObject.active = 0;
-        world->hasBigKey = 1;
+        // In the final room this object is the dungeon reward.
+        if (world->currentRoomIndex == (world->roomCount - 1)) {
+            world->hasWon = 1;
+        } else {
+            // In earlier rooms it remains the progression big key.
+            world->hasBigKey = 1;
+        }
         changedState = 1;
     }
 
