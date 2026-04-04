@@ -192,9 +192,13 @@ static void loadRoom0(World *world)
     // Outer room bounds with a single right-side opening at y=64..95.
     world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 200, .height = 8, .active = 1 };   // top
     world->roomObstacles[1] = (GameObject){ .x = 20, .y = 132, .width = 200, .height = 8, .active = 1 };  // bottom
-    world->roomObstacles[2] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };   // left wall (closed)
-    world->roomObstacles[3] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 44, .active = 1 };   // right upper
-    world->roomObstacles[4] = (GameObject){ .x = 212, .y = 96, .width = 8, .height = 44, .active = 1 };   // right lower
+    // Extend closed side boundaries to the screen edge so out-of-room
+    // margins are not roamable or visually ambiguous.
+    world->roomObstacles[2] = (GameObject){ .x = 0, .y = 0, .width = 28, .height = 160, .active = 1 };    // left wall (closed)
+    // Keep the right opening (y=64..95), while extending the blocked parts
+    // to the screen edge for a cleaner spatial passage.
+    world->roomObstacles[3] = (GameObject){ .x = 212, .y = 0, .width = 28, .height = 64, .active = 1 };   // right upper
+    world->roomObstacles[4] = (GameObject){ .x = 212, .y = 96, .width = 28, .height = 64, .active = 1 };  // right lower
     world->roomObstacles[5] = (GameObject){ .x = 92, .y = 48, .width = 36, .height = 64, .active = 1 };
     world->roomObstacles[6] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
@@ -303,9 +307,10 @@ static void loadRoom2(World *world)
     // Room bounds with a matching left-side opening for Room 2 <-> Room 3 passage.
     world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 200, .height = 8, .active = 1 };   // top
     world->roomObstacles[1] = (GameObject){ .x = 20, .y = 132, .width = 200, .height = 8, .active = 1 };  // bottom
-    world->roomObstacles[2] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 44, .active = 1 };    // left upper
-    world->roomObstacles[3] = (GameObject){ .x = 20, .y = 96, .width = 8, .height = 44, .active = 1 };    // left lower
-    world->roomObstacles[4] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };  // right
+    // Keep the left opening (y=64..95), but close side margins cleanly.
+    world->roomObstacles[2] = (GameObject){ .x = 0, .y = 0, .width = 28, .height = 64, .active = 1 };     // left upper
+    world->roomObstacles[3] = (GameObject){ .x = 0, .y = 96, .width = 28, .height = 64, .active = 1 };    // left lower
+    world->roomObstacles[4] = (GameObject){ .x = 212, .y = 0, .width = 28, .height = 160, .active = 1 };  // right (closed)
     // Divider blocks climbing from right-lower to right-upper without opening upper gate.
     world->roomObstacles[5] = (GameObject){ .x = 132, .y = 72, .width = 80, .height = 12, .active = 1 };
     world->roomObstacles[6] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
@@ -363,15 +368,17 @@ static void loadRoom3(World *world)
     world->toggleObstacles[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
     // Top wall has one opening that leads to room 5.
-    world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 160, .height = 8, .active = 1 };   // top-left
+    // Top opening is preserved at x=180..203, while blocked segments now
+    // extend upward to avoid a free roam strip above the room.
+    world->roomObstacles[0] = (GameObject){ .x = 0, .y = 0, .width = 180, .height = 28, .active = 1 };    // top-left
     world->roomObstacles[1] = (GameObject){ .x = 20, .y = 132, .width = 200, .height = 8, .active = 1 };  // bottom
-    world->roomObstacles[2] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };   // left
-    world->roomObstacles[3] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };  // right
+    world->roomObstacles[2] = (GameObject){ .x = 0, .y = 0, .width = 28, .height = 160, .active = 1 };    // left
+    world->roomObstacles[3] = (GameObject){ .x = 212, .y = 0, .width = 28, .height = 160, .active = 1 };  // right
     // Bottom wall of the goal chamber: keeps it physically gated until gate 1 opens.
     world->roomObstacles[4] = (GameObject){ .x = 140, .y = 64, .width = 72, .height = 12, .active = 1 };
     // Extra center pillar tightens navigation in the final room.
     world->roomObstacles[5] = (GameObject){ .x = 72, .y = 64, .width = 20, .height = 48, .active = 1 };
-    world->roomObstacles[6] = (GameObject){ .x = 204, .y = 20, .width = 16, .height = 8, .active = 1 };   // top-right
+    world->roomObstacles[6] = (GameObject){ .x = 204, .y = 0, .width = 36, .height = 28, .active = 1 };   // top-right
 
     // Teleporter goal is removed from room 4 to keep only spatial transitions.
     world->goalArea = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
@@ -427,12 +434,14 @@ static void loadRoom4(World *world)
     world->toggleObstacles[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
     // Top and bottom walls each have one opening for spatial passages.
-    world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 160, .height = 8, .active = 1 };   // top-left
-    world->roomObstacles[1] = (GameObject){ .x = 204, .y = 20, .width = 16, .height = 8, .active = 1 };   // top-right
-    world->roomObstacles[2] = (GameObject){ .x = 20, .y = 132, .width = 160, .height = 8, .active = 1 };  // bottom-left
-    world->roomObstacles[3] = (GameObject){ .x = 204, .y = 132, .width = 16, .height = 8, .active = 1 };  // bottom-right
-    world->roomObstacles[4] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };   // left
-    world->roomObstacles[5] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };  // right
+    // Preserve top opening x=180..203 and bottom opening x=180..203,
+    // while extending blocked segments to the screen edges for clean framing.
+    world->roomObstacles[0] = (GameObject){ .x = 0, .y = 0, .width = 180, .height = 28, .active = 1 };    // top-left
+    world->roomObstacles[1] = (GameObject){ .x = 204, .y = 0, .width = 36, .height = 28, .active = 1 };   // top-right
+    world->roomObstacles[2] = (GameObject){ .x = 0, .y = 132, .width = 180, .height = 28, .active = 1 };  // bottom-left
+    world->roomObstacles[3] = (GameObject){ .x = 204, .y = 132, .width = 36, .height = 28, .active = 1 }; // bottom-right
+    world->roomObstacles[4] = (GameObject){ .x = 0, .y = 0, .width = 28, .height = 160, .active = 1 };    // left
+    world->roomObstacles[5] = (GameObject){ .x = 212, .y = 0, .width = 28, .height = 160, .active = 1 };  // right
     // Remove the non-essential center blocker to keep the boss-door route clearer.
     world->roomObstacles[6] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
@@ -485,13 +494,15 @@ static void loadRoom5(World *world)
 
     // Top wall has an opening to room 7; this opening is blocked by gate [6]
     // until the room enemy (boss placeholder) is defeated.
-    world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 88, .height = 8, .active = 1 };    // top-left
-    world->roomObstacles[1] = (GameObject){ .x = 132, .y = 20, .width = 88, .height = 8, .active = 1 };   // top-right
+    // Keep top opening x=108..131 for the reward-room passage.
+    world->roomObstacles[0] = (GameObject){ .x = 0, .y = 0, .width = 108, .height = 28, .active = 1 };    // top-left
+    world->roomObstacles[1] = (GameObject){ .x = 132, .y = 0, .width = 108, .height = 28, .active = 1 };  // top-right
     // Bottom wall has one opening aligned with room 5's top opening.
-    world->roomObstacles[2] = (GameObject){ .x = 20, .y = 132, .width = 160, .height = 8, .active = 1 };  // bottom-left
-    world->roomObstacles[3] = (GameObject){ .x = 204, .y = 132, .width = 16, .height = 8, .active = 1 };  // bottom-right
-    world->roomObstacles[4] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };   // left
-    world->roomObstacles[5] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };  // right
+    // Keep bottom opening x=180..203 for return to room 5.
+    world->roomObstacles[2] = (GameObject){ .x = 0, .y = 132, .width = 180, .height = 28, .active = 1 };  // bottom-left
+    world->roomObstacles[3] = (GameObject){ .x = 204, .y = 132, .width = 36, .height = 28, .active = 1 }; // bottom-right
+    world->roomObstacles[4] = (GameObject){ .x = 0, .y = 0, .width = 28, .height = 160, .active = 1 };    // left
+    world->roomObstacles[5] = (GameObject){ .x = 212, .y = 0, .width = 28, .height = 160, .active = 1 };  // right
     // Gate to room 7 (opened by updateBossRoomGate when enemy is defeated).
     // It fully covers the transition zone while active.
     world->roomObstacles[6] = (GameObject){ .x = 108, .y = 0, .width = 24, .height = 28, .active = 1 };
@@ -543,11 +554,12 @@ static void loadRoom6(World *world)
     world->toggleObstacles[0] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
     world->toggleObstacles[1] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
-    world->roomObstacles[0] = (GameObject){ .x = 20, .y = 20, .width = 200, .height = 8, .active = 1 };   // top
-    world->roomObstacles[1] = (GameObject){ .x = 20, .y = 132, .width = 88, .height = 8, .active = 1 };   // bottom-left
-    world->roomObstacles[2] = (GameObject){ .x = 132, .y = 132, .width = 88, .height = 8, .active = 1 };  // bottom-right
-    world->roomObstacles[3] = (GameObject){ .x = 20, .y = 20, .width = 8, .height = 120, .active = 1 };   // left
-    world->roomObstacles[4] = (GameObject){ .x = 212, .y = 20, .width = 8, .height = 120, .active = 1 };  // right
+    world->roomObstacles[0] = (GameObject){ .x = 0, .y = 0, .width = 240, .height = 28, .active = 1 };    // top
+    // Keep bottom opening x=108..131 for return passage to room 6.
+    world->roomObstacles[1] = (GameObject){ .x = 0, .y = 132, .width = 108, .height = 28, .active = 1 };  // bottom-left
+    world->roomObstacles[2] = (GameObject){ .x = 132, .y = 132, .width = 108, .height = 28, .active = 1 }; // bottom-right
+    world->roomObstacles[3] = (GameObject){ .x = 0, .y = 0, .width = 28, .height = 160, .active = 1 };    // left
+    world->roomObstacles[4] = (GameObject){ .x = 212, .y = 0, .width = 28, .height = 160, .active = 1 };  // right
     world->roomObstacles[5] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
     world->roomObstacles[6] = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 

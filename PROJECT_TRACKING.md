@@ -2,7 +2,7 @@
 
 # Next Action
 
-Fix attack rendering regression caused by roll/dash
+Standardize visual language and color consistency
 
 ## Overview
 
@@ -310,17 +310,37 @@ Tasks:
 - [x] Fix heart pickup visual removal
 - [x] Add enemy behavior variations
 - [x] Fix unfair chaser contact behavior
-- [ ] Improve boss feedback (damage and reactions)
+- [x] Improve boss feedback (damage and reactions)
 - [x] Improve reward feedback (collection moment)
 - [x] Smooth transitions between rooms
 - [x] Add roll/dash ability
-- [ ] Ensure consistent behavior across systems
+- [x] Ensure consistent behavior across systems
 
 Validation:
 
-- [ ] Combat feels responsive and satisfying
-- [ ] Feedback is clear in all interactions
-- [ ] Game flow feels smooth and natural
+- [x] Combat feels responsive and fair
+- [x] Feedback is clear
+- [x] Game flow is smooth
+- [x] Difficulty feels balanced
+
+---
+
+## Phase 14 – Visual Foundation
+
+Status: ⏳ In progress
+
+Tasks:
+
+- [x] Replace basic tiles with distinct visual types
+- [x] Differentiate floor, walls, and obstacles
+- [x] Improve readability of interactive elements
+- [x] Ensure rendering remains stable
+
+Validation:
+
+- [x] Player can visually distinguish all elements instantly
+- [x] No regression in rendering
+- [x] Game remains fully playable
 
 ---
 
@@ -435,6 +455,15 @@ Validation:
 - Stabilized combat interactions across all enemy types
 - Improved reward feedback and end-of-dungeon satisfaction
 - Strengthened overall gameplay feel across the full loop
+- Added roll/dash ability for player movement
+- Improved exploration flow and combat repositioning
+- Finalized core gameplay feel and balance
+- Achieved stable and enjoyable full game loop
+- Validated difficulty and player experience
+
+- Established structured rendering (background vs entities)
+- Eliminated major visual artifacts
+- Improved overall visual clarity of the game space
   
 # Project Architecture
 

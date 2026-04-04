@@ -13,6 +13,10 @@
 #define HUD_AREA_HEIGHT 14
 #define PLAYFIELD_TOP HUD_AREA_HEIGHT
 #define PLAYFIELD_HEIGHT (SCREEN_HEIGHT - PLAYFIELD_TOP)
+#define GAME_AREA_X 20
+#define GAME_AREA_Y 20
+#define GAME_AREA_WIDTH 200
+#define GAME_AREA_HEIGHT 120
 #define PLAYER_SPRITE_OAM_INDEX 0
 #define PLAYER_SPRITE_TILE_BASE 512
 #define PLAYER_SPRITE_TILE_WHITE (PLAYER_SPRITE_TILE_BASE + 0)
@@ -71,6 +75,10 @@
 #define COLOR_END_INDICATOR_BORDER RGB5(31, 31, 31)
 #define COLOR_REWARD_FLASH_A RGB5(31, 31, 31)
 #define COLOR_REWARD_FLASH_B RGB5(31, 31, 0)
+#define COLOR_FLOOR_BASE RGB5(2, 2, 3)
+#define COLOR_FLOOR_TILE RGB5(5, 5, 7)
+#define COLOR_ROOM_OBSTACLE_TILE RGB5(10, 10, 12)
+#define COLOR_TOGGLE_OBSTACLE_TILE RGB5(17, 15, 11)
 
 // Player sprite setup state.
 static int gPlayerSpriteReady = 0;
@@ -244,6 +252,123 @@ static void drawPlayfieldRect(int x, int y, int width, int height, u16 color)
     drawFilledRectClipped(x, y, width, height, color, PLAYFIELD_TOP);
 }
 
+// Return the next value >= `value` that matches `offset + n * step`.
+static int alignToStepWithOffset(int value, int step, int offset)
+{
+    if (value <= offset) {
+        return offset;
+    }
+
+    int delta = value - offset;
+    int remainder = delta % step;
+    if (remainder == 0) {
+        return value;
+    }
+
+    return value + (step - remainder);
+}
+
+// Fill a region with a simple tiled floor pattern.
+// The pattern is world-space aligned so incremental redraw remains stable.
+static void drawFloorPatternRect(int x, int y, int width, int height)
+{
+    int startX = x;
+    int startY = y;
+    int endX = x + width;
+    int endY = y + height;
+
+    if (startX < 0) {
+        startX = 0;
+    }
+    if (startY < PLAYFIELD_TOP) {
+        startY = PLAYFIELD_TOP;
+    }
+    if (endX > SCREEN_WIDTH) {
+        endX = SCREEN_WIDTH;
+    }
+    if (endY > SCREEN_HEIGHT) {
+        endY = SCREEN_HEIGHT;
+    }
+
+    if (startX >= endX || startY >= endY) {
+        return;
+    }
+
+    drawPlayfieldRect(startX, startY, endX - startX, endY - startY, COLOR_FLOOR_BASE);
+
+    // Keep floor dots locked to a global 8x8 grid (offset by +2),
+    // so local dirty-rect redraw does not shift the visible pattern.
+    int firstDotY = alignToStepWithOffset(startY, 8, 2);
+    int firstDotX = alignToStepWithOffset(startX, 8, 2);
+
+    for (int dotY = firstDotY; dotY < endY; dotY += 8) {
+        for (int dotX = firstDotX; dotX < endX; dotX += 8) {
+            if (((((dotX - 2) / 8) + ((dotY - 2) / 8)) & 1) == 0) {
+                drawPlayfieldRect(dotX, dotY, 2, 2, COLOR_FLOOR_TILE);
+            }
+        }
+    }
+}
+
+// Redraw the background layer for one region:
+// - clear to dark background first
+// - draw floor pattern only inside the fixed dungeon play area
+static void drawBackgroundRegion(const GameObject *region)
+{
+    int startX = region->x;
+    int startY = region->y;
+    int endX = region->x + region->width;
+    int endY = region->y + region->height;
+
+    if (startX < 0) {
+        startX = 0;
+    }
+    if (startY < PLAYFIELD_TOP) {
+        startY = PLAYFIELD_TOP;
+    }
+    if (endX > SCREEN_WIDTH) {
+        endX = SCREEN_WIDTH;
+    }
+    if (endY > SCREEN_HEIGHT) {
+        endY = SCREEN_HEIGHT;
+    }
+
+    if (startX >= endX || startY >= endY) {
+        return;
+    }
+
+    // Keep out-of-room space stable and non-distracting.
+    drawPlayfieldRect(startX, startY, endX - startX, endY - startY, COLOR_BG);
+
+    // Draw floor only in the fixed gameplay area to keep room framing consistent.
+    int floorStartX = startX;
+    int floorStartY = startY;
+    int floorEndX = endX;
+    int floorEndY = endY;
+
+    if (floorStartX < GAME_AREA_X) {
+        floorStartX = GAME_AREA_X;
+    }
+    if (floorStartY < GAME_AREA_Y) {
+        floorStartY = GAME_AREA_Y;
+    }
+    if (floorEndX > (GAME_AREA_X + GAME_AREA_WIDTH)) {
+        floorEndX = GAME_AREA_X + GAME_AREA_WIDTH;
+    }
+    if (floorEndY > (GAME_AREA_Y + GAME_AREA_HEIGHT)) {
+        floorEndY = GAME_AREA_Y + GAME_AREA_HEIGHT;
+    }
+
+    if (floorStartX < floorEndX && floorStartY < floorEndY) {
+        drawFloorPatternRect(
+            floorStartX,
+            floorStartY,
+            floorEndX - floorStartX,
+            floorEndY - floorStartY
+        );
+    }
+}
+
 // Draw a simple 1-pixel border around a filled rectangle.
 static void drawOutlinedRect(int x, int y, int width, int height, u16 fillColor, u16 borderColor)
 {
@@ -284,6 +409,18 @@ static void drawRoomObstacle(const GameObject *obstacle)
         COLOR_ROOM_OBSTACLE,
         COLOR_ROOM_OBSTACLE_BORDER
     );
+
+    // Simple inner tile markers so walls are not flat blocks.
+    if (obstacle->width >= 8 && obstacle->height >= 8) {
+        int maxX = obstacle->x + obstacle->width - 2;
+        int maxY = obstacle->y + obstacle->height - 2;
+        for (int y = obstacle->y + 2; y < maxY; y += 6) {
+            int rowOffset = ((y / 6) & 1) ? 2 : 0;
+            for (int x = obstacle->x + 2 + rowOffset; x < maxX; x += 6) {
+                drawPlayfieldRect(x, y, 2, 2, COLOR_ROOM_OBSTACLE_TILE);
+            }
+        }
+    }
 }
 
 // Toggle obstacles are warm and bright so blocked paths are obvious.
@@ -305,6 +442,16 @@ static void drawToggleObstacle(const GameObject *obstacle)
         int rightStripeX = obstacle->x + obstacle->width - 5;
         drawFilledRect(leftStripeX, obstacle->y + 1, stripeWidth, obstacle->height - 2, COLOR_TOGGLE_OBSTACLE_BORDER);
         drawFilledRect(rightStripeX, obstacle->y + 1, stripeWidth, obstacle->height - 2, COLOR_TOGGLE_OBSTACLE_BORDER);
+    }
+
+    if (obstacle->width >= 8 && obstacle->height >= 8) {
+        int maxX = obstacle->x + obstacle->width - 2;
+        int maxY = obstacle->y + obstacle->height - 2;
+        for (int y = obstacle->y + 2; y < maxY; y += 6) {
+            for (int x = obstacle->x + 2; x < maxX; x += 6) {
+                drawPlayfieldRect(x, y, 2, 2, COLOR_TOGGLE_OBSTACLE_TILE);
+            }
+        }
     }
 }
 
@@ -564,7 +711,7 @@ static void drawPlayerHealthUI(int health, int maxHealth, int keyCount)
 // Redraw only one region of the scene.
 static void redrawSceneRegion(const GameObject *region, const World *world, const Enemy *enemy)
 {
-    drawPlayfieldRect(region->x, region->y, region->width, region->height, COLOR_BG);
+    drawBackgroundRegion(region);
 
     for (int i = 0; i < world->roomObstacleCount; i++) {
         if (world->roomObstacles[i].active && isCollidingAABB(region, &world->roomObstacles[i])) {
