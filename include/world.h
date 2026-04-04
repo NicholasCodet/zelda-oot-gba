@@ -46,6 +46,7 @@ typedef struct {
     GameObject roomObstacles[WORLD_ROOM_OBSTACLE_COUNT];
     GameObject keyObject;
     GameObject bigKeyObject;
+    GameObject heartDrop;
     GameObject lockedDoors[WORLD_LOCKED_DOOR_COUNT];
     GameObject goalArea;
     DoorZone doorZones[WORLD_DOOR_COUNT];
@@ -109,6 +110,21 @@ void updateWorldInteractions(
 void updateWorldKeyDoor(
     World *world,
     const struct Player *player,
+    int playerWidth,
+    int playerHeight
+);
+
+void trySpawnHeartDrop(
+    World *world,
+    int enemyX,
+    int enemyY,
+    int enemyWidth,
+    int enemyHeight
+);
+
+void updateWorldHeartPickup(
+    World *world,
+    struct Player *player,
     int playerWidth,
     int playerHeight
 );

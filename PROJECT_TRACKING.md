@@ -2,7 +2,7 @@
 
 # Next Action
 
-Create reward room after boss (Room 7)
+Improve combat hit feedback
 
 ## Overview
 
@@ -270,7 +270,7 @@ Validation:
 
 ## Phase 12 – Dungeon Structure
 
-Status: ⏳ In progress
+Status: ✅ Completed
 
 Tasks:
 
@@ -282,19 +282,42 @@ Tasks:
 - [x] Refine Room 5 layout (remove useless elements)
 - [x] Add dedicated boss room
 - [x] Add simple boss entity
-- [ ] Add reward room after boss (R7)
+- [x] Add reward room after boss (R7)
 - [x] Add boss gate (block exit until boss defeated)
-- [ ] Unlock post-boss room on boss defeat
-- [ ] Add dungeon reward and victory condition
-- [ ] Rebalance simple boss behavior
+- [x] Unlock post-boss room on boss defeat
+- [x] Add dungeon reward and victory condition
+- [x] Rebalance simple boss behavior
 
 Validation:
 
-- [ ] Dungeon has a clear structure (exploration → boss → reward)
-- [ ] Final progression requires big key
-- [ ] Boss encounter feels distinct from normal enemies
-- [ ] Victory is tied to dungeon completion
-- [ ] Boss encounter feels fair and readable
+- [x] Dungeon has a clear structure (exploration → boss → reward)
+- [x] Final progression requires big key
+- [x] Boss encounter feels distinct from normal enemies
+- [x] Victory is tied to dungeon completion
+- [x] Boss encounter feels fair and readable
+
+---
+
+## Phase 13 – Gameplay Refinement
+
+Status: ⏳ In progress
+
+Tasks:
+
+- [ ] Improve hit feedback (player and enemy)
+- [x] Add enemy drops (hearts)
+- [x] Fix heart drop rendering blink
+- [x] Fix heart pickup visual removal
+- [ ] Improve boss feedback (damage and reactions)
+- [ ] Improve reward feedback (collection moment)
+- [ ] Smooth transitions between rooms
+- [ ] Ensure consistent behavior across systems
+
+Validation:
+
+- [ ] Combat feels responsive and satisfying
+- [ ] Feedback is clear in all interactions
+- [ ] Game flow feels smooth and natural
 
 ---
 
@@ -397,6 +420,14 @@ Validation:
 - Designed first functional boss encounter
 - Aligned enemy behavior with player directional combat
 - Achieved fair and readable boss fight
+- Built a full Zelda-like dungeon loop
+- Implemented boss-gated progression
+- Added final reward and victory condition
+- Achieved complete playable dungeon structure
+
+- Implemented enemy drops (hearts)
+- Fixed drop rendering issues (blink and persistence)
+- Improved gameplay feedback loop (combat → reward)
   
 # Project Architecture
 

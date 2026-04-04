@@ -14,6 +14,8 @@ typedef struct {
 
     GameObject prevEnemyRect;
     int prevEnemyWasActive;
+    GameObject prevHeartRect;
+    int prevHeartWasActive;
 
     int prevHasWon;
     int prevInteractiveState[WORLD_INTERACTIVE_COUNT];

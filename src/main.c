@@ -166,8 +166,13 @@ int main(void)
                     world.interactiveCount
                 );
 
+                // Detect enemy death transitions to trigger simple item drops.
+                int enemyWasActive = enemy.active;
                 tryStartPlayerAttack(&attack, &player, keysPressed, playerWidth, playerHeight);
                 updateCombat(&player, &enemy, &attack, playerWidth, playerHeight);
+                if (enemyWasActive && !enemy.active) {
+                    trySpawnHeartDrop(&world, enemy.x, enemy.y, enemy.width, enemy.height);
+                }
                 updateBossRoomGate(&world, enemy.active);
 
                 // Death stops gameplay and switches to the dedicated dead state.
@@ -179,6 +184,7 @@ int main(void)
 
                 updateWorldInteractions(&world, &player, keysPressed, playerWidth, playerHeight);
                 updateWorldKeyDoor(&world, &player, playerWidth, playerHeight);
+                updateWorldHeartPickup(&world, &player, playerWidth, playerHeight);
                 updateWorldWinState(&world, &player, playerWidth, playerHeight);
 
                 // Final room goal ends the run and switches to dedicated win state.

@@ -80,7 +80,8 @@ void initEnemy(
     enemy->bossPauseTimer = 0;
 
     enemy->hitFlashTimer = 0;
-    enemy->hitFlashDuration = 6;
+    // Boss hits stay visible a bit longer than normal enemies.
+    enemy->hitFlashDuration = enemy->isBoss ? 10 : 6;
 }
 
 GameObject getEnemyRect(const Enemy *enemy)

@@ -34,6 +34,8 @@
 #define COLOR_KEY_BORDER RGB5(31, 20, 0)
 #define COLOR_BIG_KEY RGB5(31, 0, 24)
 #define COLOR_BIG_KEY_BORDER RGB5(31, 31, 31)
+#define COLOR_HEART_DROP RGB5(31, 6, 10)
+#define COLOR_HEART_DROP_BORDER RGB5(31, 31, 31)
 #define COLOR_GOAL RGB5(0, 20, 28)
 #define COLOR_GOAL_BORDER RGB5(31, 31, 31)
 #define COLOR_GOAL_WIN RGB5(0, 28, 10)
@@ -54,6 +56,10 @@
 #define COLOR_BOSS_FLASH_BORDER RGB5(31, 31, 0)
 #define COLOR_BOSS_FLASH_CORE RGB5(31, 10, 24)
 #define COLOR_BOSS_FLASH_EYE RGB5(31, 31, 31)
+#define COLOR_BOSS_FLASH_ALT RGB5(31, 31, 31)
+#define COLOR_BOSS_FLASH_ALT_BORDER RGB5(31, 8, 8)
+#define COLOR_BOSS_FLASH_ALT_CORE RGB5(31, 0, 12)
+#define COLOR_BOSS_FLASH_ALT_EYE RGB5(31, 31, 0)
 #define COLOR_SWITCH_BORDER RGB5(31, 31, 31)
 #define COLOR_SWITCH_CORE_ON RGB5(31, 31, 31)
 #define COLOR_SWITCH_CORE_OFF RGB5(6, 6, 6)
@@ -175,9 +181,10 @@ static void updatePlayerSprite(const Player *player)
 
     u16 tileIndex = PLAYER_SPRITE_TILE_WHITE;
 
-    // Keep invulnerability flash feedback by switching sprite graphics.
+    // Keep invulnerability feedback clear:
+    // mostly red, with short white pulses to keep motion readable.
     if (player->invulnerabilityTimer > 0) {
-        if (((player->invulnerabilityTimer / 4) & 1) == 0) {
+        if ((player->invulnerabilityTimer % 6) > 1) {
             tileIndex = PLAYER_SPRITE_TILE_RED;
         }
     }
@@ -333,6 +340,19 @@ static void drawBigKeyObject(const GameObject *bigKeyObject)
     }
 }
 
+// Heart drop is a simple red pickup distinct from keys and enemies.
+static void drawHeartDropObject(const GameObject *heartDrop)
+{
+    drawOutlinedRect(
+        heartDrop->x,
+        heartDrop->y,
+        heartDrop->width,
+        heartDrop->height,
+        COLOR_HEART_DROP,
+        COLOR_HEART_DROP_BORDER
+    );
+}
+
 // Locked door has a warmer block shape with a bright "lock" marker.
 static void drawLockedDoorObject(const GameObject *doorObject)
 {
@@ -455,17 +475,34 @@ static void drawGoalArea(const World *world)
 
 static void drawEnemyRect(const Enemy *enemy)
 {
-    int enemyFlashOn = (enemy->hitFlashTimer > 0) && (((enemy->hitFlashTimer / 2) & 1) == 0);
+    int enemyFlashOn = (enemy->hitFlashTimer > 0);
+    int bossFlashPulse = (enemy->hitFlashTimer & 1);
     u16 enemyBodyColor = enemyFlashOn ? COLOR_ENEMY_FLASH : COLOR_ENEMY;
     u16 enemyBorderColor = enemyFlashOn ? COLOR_ENEMY_FLASH_BORDER : COLOR_ENEMY_BORDER;
     u16 enemyCoreColor = enemyFlashOn ? COLOR_ENEMY_FLASH_CORE : COLOR_ENEMY_CORE;
     u16 enemyEyeColor = enemyFlashOn ? COLOR_ENEMY_FLASH_EYE : COLOR_ENEMY_EYE;
 
     if (enemy->isBoss) {
-        enemyBodyColor = enemyFlashOn ? COLOR_BOSS_FLASH : COLOR_BOSS;
-        enemyBorderColor = enemyFlashOn ? COLOR_BOSS_FLASH_BORDER : COLOR_BOSS_BORDER;
-        enemyCoreColor = enemyFlashOn ? COLOR_BOSS_FLASH_CORE : COLOR_BOSS_CORE;
-        enemyEyeColor = enemyFlashOn ? COLOR_BOSS_FLASH_EYE : COLOR_BOSS_EYE;
+        if (enemyFlashOn) {
+            // Boss uses a two-tone pulse so each hit is more obvious than
+            // regular enemies.
+            if (bossFlashPulse) {
+                enemyBodyColor = COLOR_BOSS_FLASH;
+                enemyBorderColor = COLOR_BOSS_FLASH_BORDER;
+                enemyCoreColor = COLOR_BOSS_FLASH_CORE;
+                enemyEyeColor = COLOR_BOSS_FLASH_EYE;
+            } else {
+                enemyBodyColor = COLOR_BOSS_FLASH_ALT;
+                enemyBorderColor = COLOR_BOSS_FLASH_ALT_BORDER;
+                enemyCoreColor = COLOR_BOSS_FLASH_ALT_CORE;
+                enemyEyeColor = COLOR_BOSS_FLASH_ALT_EYE;
+            }
+        } else {
+            enemyBodyColor = COLOR_BOSS;
+            enemyBorderColor = COLOR_BOSS_BORDER;
+            enemyCoreColor = COLOR_BOSS_CORE;
+            enemyEyeColor = COLOR_BOSS_EYE;
+        }
     }
 
     drawOutlinedRect(
@@ -482,6 +519,14 @@ static void drawEnemyRect(const Enemy *enemy)
         drawFilledRect(enemy->x + 2, enemy->y + 2, enemy->width - 4, enemy->height - 4, enemyCoreColor);
         drawFilledRect(enemy->x + 3, enemy->y + 3, 2, 2, enemyEyeColor);
         drawFilledRect(enemy->x + enemy->width - 5, enemy->y + 3, 2, 2, enemyEyeColor);
+    }
+
+    // Extra hit marker for boss impacts to make damage very explicit.
+    if (enemy->isBoss && enemyFlashOn && enemy->width >= 10 && enemy->height >= 10) {
+        int centerX = enemy->x + (enemy->width / 2);
+        int centerY = enemy->y + (enemy->height / 2);
+        drawPlayfieldRect(centerX - 1, enemy->y + 2, 2, enemy->height - 4, enemyBorderColor);
+        drawPlayfieldRect(enemy->x + 2, centerY - 1, enemy->width - 4, 2, enemyBorderColor);
     }
 }
 
@@ -560,6 +605,10 @@ static void redrawSceneRegion(const GameObject *region, const World *world, cons
         drawBigKeyObject(&world->bigKeyObject);
     }
 
+    if (world->heartDrop.active && isCollidingAABB(region, &world->heartDrop)) {
+        drawHeartDropObject(&world->heartDrop);
+    }
+
     if (enemy->active) {
         GameObject enemyRect = getEnemyRect(enemy);
         if (isCollidingAABB(region, &enemyRect)) {
@@ -606,6 +655,8 @@ void initRenderState(
     state->prevAttackWasActive = attack->active;
     state->prevEnemyRect = getEnemyRect(enemy);
     state->prevEnemyWasActive = enemy->active;
+    state->prevHeartRect = world->heartDrop;
+    state->prevHeartWasActive = world->heartDrop.active;
 
     state->prevHasWon = world->hasWon;
     for (int i = 0; i < world->interactiveCount; i++) {
@@ -682,6 +733,10 @@ void renderFrame(
             redrawSceneRegion(&state->prevEnemyRect, world, enemy);
         }
 
+        if (state->prevHeartWasActive) {
+            redrawSceneRegion(&state->prevHeartRect, world, enemy);
+        }
+
         for (int i = 0; i < world->interactiveCount; i++) {
             if (state->prevInteractiveState[i] != world->interactiveObjects[i].active) {
                 redrawSceneRegion(&world->interactiveObjects[i], world, enemy);
@@ -706,6 +761,8 @@ void renderFrame(
 
     state->prevEnemyRect = getEnemyRect(enemy);
     state->prevEnemyWasActive = enemy->active;
+    state->prevHeartRect = world->heartDrop;
+    state->prevHeartWasActive = world->heartDrop.active;
 
     state->prevHasWon = world->hasWon;
     for (int i = 0; i < world->interactiveCount; i++) {

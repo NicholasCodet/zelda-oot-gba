@@ -12,6 +12,16 @@
 #define WORLD_SCAN_MIN_Y 20
 #define WORLD_SCAN_MAX_X 220
 #define WORLD_SCAN_MAX_Y 140
+#define HEART_DROP_CHANCE_PERCENT 40
+
+// Simple deterministic RNG for lightweight drop chance checks.
+static unsigned int gDropRngState = 0x1A2B3C4Du;
+
+static int nextDropRoll100(void)
+{
+    gDropRngState = (gDropRngState * 1103515245u) + 12345u;
+    return (int)((gDropRngState >> 16) % 100u);
+}
 
 // Returns 1 if the rectangle overlaps any active room geometry.
 static int overlapsRoomGeometry(const World *world, const GameObject *rect)
@@ -587,6 +597,8 @@ void initWorld(World *world)
     world->currentRoomIndex = 0;
     world->hasWon = 0;
     world->requestFullPlayfieldRedraw = 1;
+    world->heartDrop = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
+    gDropRngState = 0x1A2B3C4Du;
 
     // Persistence storage is initialized once; defaults are captured
     // on first load of each room.
@@ -638,6 +650,9 @@ void loadWorldRoom(World *world, int roomIndex)
     } else {
         loadRoom6(world);
     }
+
+    // Heart drops are runtime combat drops, not authored room layout.
+    world->heartDrop = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
 
     // Apply per-room persistent interaction/obstacle states.
     applyCurrentRoomPersistentState(world);
@@ -864,6 +879,61 @@ void updateWorldKeyDoor(
         saveCurrentRoomPersistentState(world);
         world->requestFullPlayfieldRedraw = 1;
     }
+}
+
+void trySpawnHeartDrop(
+    World *world,
+    int enemyX,
+    int enemyY,
+    int enemyWidth,
+    int enemyHeight
+)
+{
+    if (world->heartDrop.active) {
+        return;
+    }
+
+    // Simple chance-based drop on enemy death.
+    if (nextDropRoll100() >= HEART_DROP_CHANCE_PERCENT) {
+        return;
+    }
+
+    world->heartDrop.x = enemyX + (enemyWidth / 2) - 3;
+    world->heartDrop.y = enemyY + (enemyHeight / 2) - 3;
+    world->heartDrop.width = 6;
+    world->heartDrop.height = 6;
+    world->heartDrop.active = 1;
+    // Do not request full playfield redraw here.
+    // Enemy death + heart spawn are handled by normal incremental redraw.
+}
+
+void updateWorldHeartPickup(
+    World *world,
+    Player *player,
+    int playerWidth,
+    int playerHeight
+)
+{
+    if (player->isDead || !world->heartDrop.active) {
+        return;
+    }
+
+    GameObject playerRect = getPlayerRect(player, playerWidth, playerHeight);
+    if (!isCollidingAABB(&playerRect, &world->heartDrop)) {
+        return;
+    }
+
+    world->heartDrop.active = 0;
+
+    // Restore one health point without exceeding max health.
+    if (player->health < player->maxHealth) {
+        player->health++;
+        if (player->health > player->maxHealth) {
+            player->health = player->maxHealth;
+        }
+    }
+
+    // Keep pickup redraw incremental to avoid visible full-playfield flash.
 }
 
 int checkDoorZoneTransition(
