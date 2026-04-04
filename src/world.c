@@ -13,6 +13,8 @@
 #define WORLD_SCAN_MAX_X 220
 #define WORLD_SCAN_MAX_Y 140
 #define HEART_DROP_CHANCE_PERCENT 40
+#define REWARD_FLASH_FRAMES 18
+#define REWARD_WIN_DELAY_FRAMES 18
 
 // Simple deterministic RNG for lightweight drop chance checks.
 static unsigned int gDropRngState = 0x1A2B3C4Du;
@@ -603,6 +605,8 @@ void initWorld(World *world)
     world->hasBigKey = 0;
     world->currentRoomIndex = 0;
     world->hasWon = 0;
+    world->rewardFlashTimer = 0;
+    world->rewardWinDelayTimer = 0;
     world->requestFullPlayfieldRedraw = 1;
     world->heartDrop = (GameObject){ .x = 0, .y = 0, .width = 0, .height = 0, .active = 0 };
     world->enemyType = ENEMY_TYPE_PATROL;
@@ -670,6 +674,8 @@ void loadWorldRoom(World *world, int roomIndex)
 
     // Every new room starts in a non-win state.
     world->hasWon = 0;
+    world->rewardFlashTimer = 0;
+    world->rewardWinDelayTimer = 0;
     // Force a full playfield redraw after room/world state replacement.
     world->requestFullPlayfieldRedraw = 1;
 }
@@ -771,6 +777,21 @@ void updateWorldWinState(
     int playerHeight
 )
 {
+    // Reward-room success beat:
+    // keep gameplay in PLAYING for a short moment, then switch to WIN.
+    if (world->rewardWinDelayTimer > 0) {
+        world->rewardWinDelayTimer--;
+        if (world->rewardFlashTimer > 0) {
+            world->rewardFlashTimer--;
+        }
+
+        if (world->rewardWinDelayTimer == 0) {
+            world->hasWon = 1;
+        }
+
+        return;
+    }
+
     // Dead players cannot trigger win progression.
     if (player->isDead || world->hasWon) {
         return;
@@ -829,6 +850,7 @@ void updateWorldKeyDoor(
     }
 
     int changedState = 0;
+    int rewardCollectedInFinalRoom = 0;
     GameObject playerRect = getPlayerRect(player, playerWidth, playerHeight);
 
     // Collect key on touch.
@@ -843,12 +865,14 @@ void updateWorldKeyDoor(
         world->bigKeyObject.active = 0;
         // In the final room this object is the dungeon reward.
         if (world->currentRoomIndex == (world->roomCount - 1)) {
-            world->hasWon = 1;
+            world->rewardFlashTimer = REWARD_FLASH_FRAMES;
+            world->rewardWinDelayTimer = REWARD_WIN_DELAY_FRAMES;
+            rewardCollectedInFinalRoom = 1;
         } else {
             // In earlier rooms it remains the progression big key.
             world->hasBigKey = 1;
+            changedState = 1;
         }
-        changedState = 1;
     }
 
     // Spend one key to open one nearby locked door.
@@ -886,6 +910,10 @@ void updateWorldKeyDoor(
     if (changedState) {
         saveCurrentRoomPersistentState(world);
         world->requestFullPlayfieldRedraw = 1;
+    } else if (rewardCollectedInFinalRoom) {
+        // Reward collection uses incremental redraw + local flash effect.
+        // No forced full-playfield redraw to avoid visible flash.
+        saveCurrentRoomPersistentState(world);
     }
 }
 

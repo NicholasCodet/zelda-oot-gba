@@ -63,6 +63,8 @@ typedef struct {
     int keyCount;
     int hasBigKey;
     int hasWon;
+    int rewardFlashTimer;
+    int rewardWinDelayTimer;
     // Debug-oriented: number of invalid layout placements detected
     // when the current room was initialized.
     int layoutValidationIssueCount;

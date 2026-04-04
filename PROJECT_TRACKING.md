@@ -2,7 +2,8 @@
 
 # Next Action
 
-Improve reward collection feedback
+Improve room transitions for smoother flow
+
 ## Overview
 
 This document tracks the progress of the project.
@@ -310,7 +311,7 @@ Tasks:
 - [x] Add enemy behavior variations
 - [x] Fix unfair chaser contact behavior
 - [ ] Improve boss feedback (damage and reactions)
-- [ ] Improve reward feedback (collection moment)
+- [x] Improve reward feedback (collection moment)
 - [ ] Smooth transitions between rooms
 - [ ] Ensure consistent behavior across systems
 
@@ -431,6 +432,8 @@ Validation:
 - Improved gameplay feedback loop (combat → reward)
 - Fixed enemy-player contact behavior (no more sticky enemies)
 - Stabilized combat interactions across all enemy types
+- Improved reward feedback and end-of-dungeon satisfaction
+- Strengthened overall gameplay feel across the full loop
   
 # Project Architecture
 

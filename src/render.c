@@ -69,6 +69,8 @@
 #define COLOR_END_LOSE_BG RGB5(12, 0, 0)
 #define COLOR_END_INDICATOR_FILL RGB5(20, 20, 20)
 #define COLOR_END_INDICATOR_BORDER RGB5(31, 31, 31)
+#define COLOR_REWARD_FLASH_A RGB5(31, 31, 31)
+#define COLOR_REWARD_FLASH_B RGB5(31, 31, 0)
 
 // Player sprite setup state.
 static int gPlayerSpriteReady = 0;
@@ -618,6 +620,7 @@ static void redrawSceneRegion(const GameObject *region, const World *world, cons
 }
 
 static void drawDynamicObjects(
+    const World *world,
     const Player *player,
     const Enemy *enemy,
     const Attack *attack
@@ -629,6 +632,23 @@ static void drawDynamicObjects(
 
     if (attack->active) {
         drawPlayfieldRect(attack->x, attack->y, attack->width, attack->height, RGB5(31, 31, 0));
+    }
+
+    // Final reward pickup feedback: short, readable pulse at the reward spot.
+    if (world->rewardFlashTimer > 0) {
+        u16 flashColor = (((world->rewardFlashTimer / 2) & 1) == 0)
+            ? COLOR_REWARD_FLASH_A
+            : COLOR_REWARD_FLASH_B;
+        int fx = world->bigKeyObject.x - 6;
+        int fy = world->bigKeyObject.y - 6;
+        int fw = world->bigKeyObject.width + 12;
+        int fh = world->bigKeyObject.height + 12;
+        int cx = world->bigKeyObject.x + (world->bigKeyObject.width / 2);
+        int cy = world->bigKeyObject.y + (world->bigKeyObject.height / 2);
+
+        drawOutlinedRect(fx, fy, fw, fh, COLOR_BG, flashColor);
+        drawPlayfieldRect(cx - 1, fy + 2, 2, fh - 4, flashColor);
+        drawPlayfieldRect(fx + 2, cy - 1, fw - 4, 2, flashColor);
     }
 
     // Keep the existing simple death indicator.
@@ -688,7 +708,7 @@ void drawInitialFrame(
     // Draw HUD first so top scanlines are updated early.
     drawPlayerHealthUI(player->health, player->maxHealth, world->keyCount);
     redrawSceneRegion(&fullPlayfieldRegion, world, enemy);
-    drawDynamicObjects(player, enemy, attack);
+    drawDynamicObjects(world, player, enemy, attack);
 }
 
 void renderFrame(
@@ -752,7 +772,7 @@ void renderFrame(
         }
     }
 
-    drawDynamicObjects(player, enemy, attack);
+    drawDynamicObjects(world, player, enemy, attack);
 
     state->prevPlayerRect = getPlayerRect(player, playerWidth, playerHeight);
 
